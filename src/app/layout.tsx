@@ -15,9 +15,12 @@ const body = Outfit({
 });
 
 export const metadata: Metadata = {
-  title: "Garden Restaurant · Kathmandu",
+  title: {
+    default: "Garden Restaurant · Lazimpat, Kathmandu",
+    template: "%s · Garden Restaurant",
+  },
   description:
-    "Garden Restaurant cafe ops — waiter ordering, kitchen display, billing, stock, expenses, staff, and owner reports (NPR demo).",
+    "Garden Restaurant — brunch cafe in Lazimpat, Kathmandu. Menu, reservations, guest QR ordering, and staff ops (NPR demo).",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

@@ -7,7 +7,7 @@ import { restaurant } from "@/lib/demo-data";
 import { RoleSwitcher } from "@/components/role-switcher";
 
 const links = [
-  { href: "/", label: "Home" },
+  { href: "/", label: "Site" },
   { href: "/demo", label: "Waiter" },
   { href: "/table/t1", label: "Guest QR" },
   { href: "/kitchen", label: "Kitchen" },
@@ -33,7 +33,7 @@ export function SiteNav({
       )}
     >
       <div className="flex items-center justify-between gap-4">
-        <Link href="/" className="group flex items-baseline gap-2">
+        <Link href="/dashboard" className="group flex items-baseline gap-2">
           <span
             className={cn(
               "font-[family-name:var(--font-display)] text-xl tracking-tight md:text-2xl",
@@ -48,12 +48,15 @@ export function SiteNav({
               dark ? "text-[var(--garden-mist)]/65" : "text-[var(--garden-leaf)]/80",
             )}
           >
-            Kathmandu
+            Staff
           </span>
         </Link>
         <nav className="flex flex-wrap items-center justify-end gap-1 sm:gap-2">
           {links.map((link) => {
-            const active = pathname === link.href;
+            const active =
+              link.href === "/"
+                ? pathname === "/"
+                : pathname === link.href || pathname.startsWith(`${link.href}/`);
             return (
               <Link
                 key={link.href}

@@ -16,6 +16,22 @@ export type MenuItem = {
   popular?: boolean;
   stockSkuId?: string;
   recipe?: RecipeLine[];
+  /** Public menu / marketing image (Unsplash/Pexels or custom URL) */
+  image?: string;
+};
+
+export type Testimonial = {
+  id: string;
+  quote: string;
+  name: string;
+  detail: string;
+};
+
+export type GalleryImage = {
+  id: string;
+  src: string;
+  alt: string;
+  caption?: string;
 };
 
 export type OrderStatus =
@@ -152,10 +168,97 @@ export const restaurant = {
   subtitle:
     "A calm Kathmandu cafe for slow mornings, shared tables, and garden-grown flavors.",
   location: "Lazimpat, Kathmandu",
+  address: "Lazimpat Road, Kathmandu 44600, Nepal",
   hours: "7:00 – 21:00 · Asia/Kathmandu",
+  hoursWeekday: "Mon–Fri · 7:00 AM – 9:00 PM",
+  hoursWeekend: "Sat–Sun · 8:00 AM – 9:00 PM",
   phone: "+977-1-4001234",
+  email: "hello@gardenrestaurant.np",
   currency: "NPR" as const,
+  heroHeadline: "Good food. Quiet mornings.",
+  heroSupport:
+    "Brunch plates, garden greens, and Nepali cafe classics — served under the leaves in Lazimpat.",
+  storyTitle: "A little story behind every plate",
+  storyLead:
+    "Garden Restaurant started as a terrace kitchen for neighbours who wanted slower mornings and honest food.",
+  storyBody:
+    "We still cook with market-morning vegetables, Nepali beans, and herbs from planters along the patio. Come for chiya and stay for dal bhat — or the other way around.",
+  storyLong: [
+    "Anupam opened Garden Restaurant after years of feeding friends on a Lazimpat rooftop. The idea was simple: a cafe that felt like a garden — leafy, unhurried, and open from early chiya to late dinner.",
+    "Today the patio seats fill with regulars, travellers, and families who share momos, filter coffee, and long conversations. Our kitchen still shops Kalimati at dawn and writes the board by hand when something runs low.",
+    "We are not a franchise template. We are a neighbourhood cafe that happens to run a proper floor — waiter tablets, kitchen tickets, and all — so your brunch arrives hot.",
+  ],
 };
+
+/** Public-site imagery — Unsplash cafe/garden food (not third-party brand assets). */
+export const marketingGallery: GalleryImage[] = [
+  {
+    id: "g1",
+    src: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=1200&q=80",
+    alt: "Shared table with brunch plates",
+    caption: "Shared tables",
+  },
+  {
+    id: "g2",
+    src: "https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=1200&q=80",
+    alt: "Cafe interior with warm light",
+    caption: "Inside the garden",
+  },
+  {
+    id: "g3",
+    src: "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1200&q=80",
+    alt: "Pour-over coffee preparation",
+    caption: "Garden filter coffee",
+  },
+  {
+    id: "g4",
+    src: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1200&q=80",
+    alt: "Evening restaurant seating",
+    caption: "Stay a little longer",
+  },
+  {
+    id: "g5",
+    src: "https://images.unsplash.com/photo-1466978913421-dad2ebd01d17?auto=format&fit=crop&w=1200&q=80",
+    alt: "Outdoor cafe patio greenery",
+    caption: "Patio greens",
+  },
+  {
+    id: "g6",
+    src: "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=1200&q=80",
+    alt: "Seasonal plated dish",
+    caption: "Seasonal plates",
+  },
+];
+
+export const marketingHeroImage =
+  "https://images.unsplash.com/photo-1559339352-11d035aa65de?auto=format&fit=crop&w=1800&q=80";
+
+export const marketingAboutImage =
+  "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=1400&q=80";
+
+export const testimonials: Testimonial[] = [
+  {
+    id: "t1",
+    quote:
+      "The patio chiya and dal bhat ruined every rushed breakfast for me. I bring clients here on purpose.",
+    name: "Niraj T.",
+    detail: "Regular since 2022",
+  },
+  {
+    id: "t2",
+    quote:
+      "Momos arrive hot, the greens taste like a garden, and nobody rushes you out. Rare in Lazimpat.",
+    name: "Sama K.",
+    detail: "Weekend brunch",
+  },
+  {
+    id: "t3",
+    quote:
+      "Filter coffee worth the walk. Soft light, real plants, and staff who remember how you take your lemon.",
+    name: "Elliot M.",
+    detail: "Visitor from Pokhara",
+  },
+];
 
 export const roles: { id: Role; label: string; hint: string }[] = [
   { id: "owner", label: "Owner / Admin", hint: "Sales, kharcha, reports, settings" },
@@ -180,6 +283,8 @@ export const seedMenuItems: MenuItem[] = [
     category: "mains",
     popular: true,
     stockSkuId: "sku-dal",
+    image:
+      "https://images.unsplash.com/photo-1585937421612-70a008356fbe?auto=format&fit=crop&w=900&q=80",
   },
   {
     id: "thukpa",
@@ -189,6 +294,8 @@ export const seedMenuItems: MenuItem[] = [
     category: "mains",
     popular: true,
     stockSkuId: "sku-noodles",
+    image:
+      "https://images.unsplash.com/photo-1569718212165-3a8278d5f624?auto=format&fit=crop&w=900&q=80",
   },
   {
     id: "momos",
@@ -197,6 +304,8 @@ export const seedMenuItems: MenuItem[] = [
     price: 320,
     category: "mains",
     stockSkuId: "sku-momo",
+    image:
+      "https://images.unsplash.com/photo-1496116218417-1a781b1c416c?auto=format&fit=crop&w=900&q=80",
   },
   {
     id: "flatbread",
@@ -205,6 +314,8 @@ export const seedMenuItems: MenuItem[] = [
     price: 520,
     category: "mains",
     stockSkuId: "sku-flour",
+    image:
+      "https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=900&q=80",
   },
   {
     id: "salad",
@@ -213,6 +324,8 @@ export const seedMenuItems: MenuItem[] = [
     price: 280,
     category: "sides",
     stockSkuId: "sku-greens",
+    image:
+      "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=900&q=80",
   },
   {
     id: "fries",
@@ -221,6 +334,8 @@ export const seedMenuItems: MenuItem[] = [
     price: 220,
     category: "sides",
     stockSkuId: "sku-potato",
+    image:
+      "https://images.unsplash.com/photo-1573080496219-bb080dd4f877?auto=format&fit=crop&w=900&q=80",
   },
   {
     id: "chiya",
@@ -230,6 +345,8 @@ export const seedMenuItems: MenuItem[] = [
     category: "drinks",
     popular: true,
     stockSkuId: "sku-tea",
+    image:
+      "https://images.unsplash.com/photo-1571934811356-5cc061b6821f?auto=format&fit=crop&w=900&q=80",
   },
   {
     id: "filter-coffee",
@@ -238,6 +355,8 @@ export const seedMenuItems: MenuItem[] = [
     price: 180,
     category: "drinks",
     stockSkuId: "sku-coffee",
+    image:
+      "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=900&q=80",
   },
   {
     id: "lemonade",
@@ -246,6 +365,8 @@ export const seedMenuItems: MenuItem[] = [
     price: 160,
     category: "drinks",
     stockSkuId: "sku-lemon",
+    image:
+      "https://images.unsplash.com/photo-1621263764928-df1444c5e859?auto=format&fit=crop&w=900&q=80",
   },
   {
     id: "lassi",
@@ -254,6 +375,8 @@ export const seedMenuItems: MenuItem[] = [
     price: 200,
     category: "drinks",
     stockSkuId: "sku-yogurt",
+    image:
+      "https://images.unsplash.com/photo-1525385133512-2f3bdd039054?auto=format&fit=crop&w=900&q=80",
   },
   {
     id: "sel-roti",
@@ -262,6 +385,8 @@ export const seedMenuItems: MenuItem[] = [
     price: 150,
     category: "sweets",
     stockSkuId: "sku-rice",
+    image:
+      "https://images.unsplash.com/photo-1486427944299-d1955d23e34d?auto=format&fit=crop&w=900&q=80",
   },
   {
     id: "brownie",
@@ -270,6 +395,8 @@ export const seedMenuItems: MenuItem[] = [
     price: 240,
     category: "sweets",
     stockSkuId: "sku-cocoa",
+    image:
+      "https://images.unsplash.com/photo-1606313564200-e75d5e30476c?auto=format&fit=crop&w=900&q=80",
   },
 ];
 
@@ -630,19 +757,24 @@ export type OpsState = {
   settings: OpsSettings;
 };
 
-/** Attach simple recipe lines from stockSkuId when missing. */
+/** Attach simple recipe lines from stockSkuId when missing; backfill marketing images. */
 export function withSeedRecipes(items: MenuItem[]): MenuItem[] {
   return items.map((item) => {
-    if (item.recipe?.length) return item;
-    if (!item.stockSkuId) return { ...item, recipe: [] };
-    const base: RecipeLine[] = [{ skuId: item.stockSkuId, qty: 0.25 }];
+    const seed = seedMenuItems.find((s) => s.id === item.id);
+    const withImage: MenuItem = {
+      ...item,
+      image: item.image || seed?.image,
+    };
+    if (withImage.recipe?.length) return withImage;
+    if (!withImage.stockSkuId) return { ...withImage, recipe: [] };
+    const base: RecipeLine[] = [{ skuId: withImage.stockSkuId, qty: 0.25 }];
     // Light secondary ingredients for a more realistic demo
-    if (item.category === "mains" && item.stockSkuId !== "sku-greens") {
+    if (withImage.category === "mains" && withImage.stockSkuId !== "sku-greens") {
       base.push({ skuId: "sku-greens", qty: 0.05 });
     }
-    if (item.id === "dal-bhat") {
+    if (withImage.id === "dal-bhat") {
       return {
-        ...item,
+        ...withImage,
         recipe: [
           { skuId: "sku-dal", qty: 0.15 },
           { skuId: "sku-rice", qty: 0.2 },
@@ -650,16 +782,16 @@ export function withSeedRecipes(items: MenuItem[]): MenuItem[] {
         ],
       };
     }
-    if (item.id === "momos") {
+    if (withImage.id === "momos") {
       return {
-        ...item,
+        ...withImage,
         recipe: [
           { skuId: "sku-momo", qty: 1 },
           { skuId: "sku-greens", qty: 0.05 },
         ],
       };
     }
-    return { ...item, recipe: base };
+    return { ...withImage, recipe: base };
   });
 }
 

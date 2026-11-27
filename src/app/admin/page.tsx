@@ -103,10 +103,15 @@ export default function AdminPage() {
       <div className="mx-auto max-w-6xl px-5 py-8 md:px-10">
         {section === "menu" && (
           <div className="space-y-4">
+            <p className="text-sm text-[var(--garden-ink)]/70">
+              CMS-style menu for the public site (/menu) and ops. Edit name,
+              price, category, description, and image URL — changes sync via
+              localStorage.
+            </p>
             {state.menuItems.map((item) => (
               <div
                 key={item.id}
-                className="grid gap-3 rounded-lg border border-[var(--garden-leaf)]/12 bg-white p-4 md:grid-cols-[1.4fr_0.6fr_0.5fr]"
+                className="grid gap-3 rounded-lg border border-[var(--garden-leaf)]/12 bg-white p-4 md:grid-cols-[1.2fr_0.5fr_0.5fr]"
               >
                 <label className="text-sm">
                   <span className="text-[11px] uppercase tracking-wide text-[var(--garden-leaf)]">
@@ -154,6 +159,34 @@ export default function AdminPage() {
                     <option value="sweets">Sweets</option>
                   </select>
                 </label>
+                <label className="text-sm md:col-span-3">
+                  <span className="text-[11px] uppercase tracking-wide text-[var(--garden-leaf)]">
+                    Description
+                  </span>
+                  <textarea
+                    rows={2}
+                    className="mt-1 w-full rounded-md border border-[var(--garden-leaf)]/20 px-3 py-2"
+                    value={item.description}
+                    onChange={(e) =>
+                      updateMenuItem(item.id, { description: e.target.value })
+                    }
+                  />
+                </label>
+                <label className="text-sm md:col-span-3">
+                  <span className="text-[11px] uppercase tracking-wide text-[var(--garden-leaf)]">
+                    Image URL (Unsplash / Pexels / own)
+                  </span>
+                  <input
+                    className="mt-1 h-10 w-full rounded-md border border-[var(--garden-leaf)]/20 px-3"
+                    value={item.image ?? ""}
+                    placeholder="https://images.unsplash.com/..."
+                    onChange={(e) =>
+                      updateMenuItem(item.id, {
+                        image: e.target.value || undefined,
+                      })
+                    }
+                  />
+                </label>
               </div>
             ))}
             <Button
@@ -164,6 +197,8 @@ export default function AdminPage() {
                   description: "Describe this plate",
                   price: 200,
                   category: "mains",
+                  image:
+                    "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=900&q=80",
                 })
               }
             >
