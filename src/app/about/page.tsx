@@ -1,103 +1,62 @@
 import Image from "next/image";
 import Link from "next/link";
-import { MarketingNav } from "@/components/marketing/marketing-nav";
-import { MarketingFooter } from "@/components/marketing/marketing-footer";
-import { Reveal } from "@/components/marketing/reveal";
-import {
-  marketingAboutImage,
-  marketingGallery,
-  restaurant,
-} from "@/lib/demo-data";
+import { marketingAboutImage, restaurant } from "@/lib/demo-data";
 
 export default function AboutPage() {
   return (
-    <main className="min-h-screen bg-[var(--garden-paper)]">
-      <div className="relative min-h-[52vh] overflow-hidden text-white md:min-h-[60vh]">
+    <main className="min-h-[100svh] bg-[var(--garden-paper)]">
+      <div className="relative h-48 overflow-hidden text-white sm:h-56">
         <Image
           src={marketingAboutImage}
-          alt="Inside Garden Restaurant"
+          alt=""
           fill
           priority
           sizes="100vw"
           className="object-cover"
         />
-        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(15,46,31,0.5)_0%,rgba(15,46,31,0.75)_100%)]" />
-        <div className="relative z-10">
-          <MarketingNav tone="dark" />
-          <div className="mx-auto max-w-6xl px-5 pb-16 pt-10 md:px-10 md:pb-20">
-            <p className="animate-rise text-xs uppercase tracking-[0.28em] text-white/70">
-              About us
-            </p>
-            <h1 className="animate-rise-delay-1 mt-3 max-w-3xl font-[family-name:var(--font-display)] text-5xl leading-tight md:text-6xl">
+        <div className="absolute inset-0 bg-[var(--garden-deep)]/55" />
+        <div className="relative z-10 flex h-full flex-col justify-between px-5 py-4 md:px-10">
+          <Link href="/" className="text-sm text-white/80">
+            ← Home
+          </Link>
+          <div>
+            <h1 className="font-[family-name:var(--font-display)] text-3xl">
               {restaurant.name}
             </h1>
-            <p className="animate-rise-delay-2 mt-4 max-w-xl text-lg text-white/85">
-              {restaurant.tagline}
-            </p>
+            <p className="mt-1 text-sm text-white/80">{restaurant.tagline}</p>
           </div>
         </div>
       </div>
 
-      <section className="mx-auto max-w-3xl px-5 py-16 md:px-10 md:py-24">
-        {restaurant.storyLong.map((para, i) => (
-          <Reveal key={i} delay={i * 80}>
-            <p
-              className={
-                i === 0
-                  ? "font-[family-name:var(--font-display)] text-2xl leading-snug text-[var(--garden-deep)] md:text-3xl"
-                  : "mt-6 leading-relaxed text-[var(--garden-ink)]/75"
-              }
-            >
-              {para}
-            </p>
-          </Reveal>
-        ))}
-      </section>
-
-      <section className="border-y border-[var(--garden-leaf)]/10 bg-[var(--garden-mist)]/50 px-5 py-16 md:px-10">
-        <div className="mx-auto grid max-w-6xl gap-3 sm:grid-cols-2 md:grid-cols-3 md:gap-4">
-          {marketingGallery.slice(0, 3).map((img, i) => (
-            <Reveal key={img.id} delay={i * 70}>
-              <div className="relative aspect-[4/3] overflow-hidden rounded-2xl">
-                <Image
-                  src={img.src}
-                  alt={img.alt}
-                  fill
-                  sizes="33vw"
-                  className="object-cover"
-                />
-              </div>
-            </Reveal>
-          ))}
-        </div>
-      </section>
-
-      <section className="mx-auto max-w-6xl px-5 py-16 md:px-10 md:py-20">
-        <Reveal>
-          <h2 className="font-[family-name:var(--font-display)] text-3xl text-[var(--garden-deep)] md:text-4xl">
-            Visit the patio
-          </h2>
-          <p className="mt-3 max-w-lg text-[var(--garden-ink)]/70">
-            {restaurant.address} · {restaurant.hoursWeekday}
-          </p>
-          <div className="mt-8 flex flex-wrap gap-3">
-            <Link
-              href="/contact"
-              className="inline-flex h-11 items-center rounded-md bg-[var(--garden-deep)] px-5 text-sm font-semibold text-white"
-            >
-              Plan a visit
-            </Link>
-            <Link
-              href="/menu"
-              className="inline-flex h-11 items-center rounded-md border border-[var(--garden-leaf)]/25 px-5 text-sm font-medium"
-            >
-              See the short menu
-            </Link>
+      <section className="mx-auto max-w-lg px-5 py-10 md:px-10">
+        <p className="text-base leading-relaxed text-[var(--garden-ink)]/80">
+          {restaurant.storyLead} {restaurant.storyBody}
+        </p>
+        <dl className="mt-8 space-y-4 text-sm">
+          <div>
+            <dt className="text-[11px] uppercase tracking-[0.2em] text-[var(--garden-leaf)]">
+              Find us
+            </dt>
+            <dd className="mt-1 text-[var(--garden-deep)]">{restaurant.address}</dd>
           </div>
-        </Reveal>
+          <div>
+            <dt className="text-[11px] uppercase tracking-[0.2em] text-[var(--garden-leaf)]">
+              Hours
+            </dt>
+            <dd className="mt-1 text-[var(--garden-deep)]">
+              {restaurant.hoursWeekday}
+              <br />
+              {restaurant.hoursWeekend}
+            </dd>
+          </div>
+        </dl>
+        <Link
+          href="/order"
+          className="mt-10 flex min-h-14 items-center justify-center rounded-2xl bg-[var(--garden-deep)] text-base font-semibold text-white"
+        >
+          Order
+        </Link>
       </section>
-
-      <MarketingFooter />
     </main>
   );
 }

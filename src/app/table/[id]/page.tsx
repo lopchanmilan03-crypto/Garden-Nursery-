@@ -1,7 +1,7 @@
 import { Suspense } from "react";
-import { GuestTableClient } from "./guest-table-client";
+import { TableRedirect } from "./table-redirect";
 
-export default function GuestTablePage({
+export default function TablePage({
   params,
 }: {
   params: Promise<{ id: string }>;
@@ -9,12 +9,12 @@ export default function GuestTablePage({
   return (
     <Suspense
       fallback={
-        <main className="min-h-screen bg-[var(--garden-sand)] px-5 py-16 text-center text-[var(--garden-deep)]">
-          Loading table menu…
+        <main className="flex min-h-[100svh] items-center justify-center bg-[var(--garden-sand)] text-sm text-[var(--garden-ink)]/60">
+          Opening order…
         </main>
       }
     >
-      <GuestTableClient params={params} />
+      <TableRedirect params={params} />
     </Suspense>
   );
 }
