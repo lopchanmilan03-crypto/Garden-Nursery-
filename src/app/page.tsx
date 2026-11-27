@@ -27,13 +27,19 @@ export default function LandingPage() {
               href="/demo"
               className="inline-flex h-12 items-center justify-center rounded-md bg-[var(--garden-gold)] px-7 text-sm font-semibold text-[var(--garden-deep)] transition hover:brightness-105"
             >
-              Start an order
+              Waiter order
             </Link>
             <Link
               href="/dashboard"
               className="inline-flex h-12 items-center justify-center rounded-md border border-white/25 bg-white/5 px-7 text-sm font-medium text-white backdrop-blur-sm transition hover:bg-white/12"
             >
-              Staff floor
+              Owner ops
+            </Link>
+            <Link
+              href="/kitchen"
+              className="inline-flex h-12 items-center justify-center rounded-md border border-white/25 bg-white/5 px-7 text-sm font-medium text-white backdrop-blur-sm transition hover:bg-white/12"
+            >
+              Kitchen
             </Link>
           </div>
         </div>
@@ -46,8 +52,8 @@ export default function LandingPage() {
               {restaurant.tagline}
             </h2>
             <p className="mt-3 max-w-lg text-[var(--garden-ink)]/75">
-              Browse the menu, send it to the kitchen, and settle with cash, card,
-              or QR — sample payments only, ready for guest or staff use.
+              Waiter phone to live kitchen, cash/UPI/card billing, stock &
+              kharcha, staff, and monthly reports — NPR demo with editable admin.
             </p>
           </div>
           <dl className="grid gap-4 text-sm text-[var(--garden-ink)]/80 sm:grid-cols-2">

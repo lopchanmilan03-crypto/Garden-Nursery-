@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Fraunces, Outfit } from "next/font/google";
+import { Providers } from "@/components/providers";
 import "./globals.css";
 
 const display = Fraunces({
@@ -16,7 +17,7 @@ const body = Outfit({
 export const metadata: Metadata = {
   title: "Garden Restaurant · Kathmandu",
   description:
-    "Guest ordering and staff order-taking for Garden Restaurant — fresh plates under the leaves in Lazimpat, Kathmandu.",
+    "Garden Restaurant cafe ops — waiter ordering, kitchen display, billing, stock, expenses, staff, and owner reports (NPR demo).",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -26,7 +27,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${display.variable} ${body.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col font-[family-name:var(--font-body)]">
-        {children}
+        <Providers>{children}</Providers>
       </body>
     </html>
   );
