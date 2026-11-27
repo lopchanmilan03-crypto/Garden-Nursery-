@@ -1,16 +1,6 @@
-import { Suspense } from "react";
-import { OrderClient } from "./order-client";
+import { redirect } from "next/navigation";
 
-export default function OrderPage() {
-  return (
-    <Suspense
-      fallback={
-        <main className="flex min-h-[100svh] items-center justify-center bg-[var(--garden-sand)] text-sm text-[var(--garden-ink)]/60">
-          Loading…
-        </main>
-      }
-    >
-      <OrderClient />
-    </Suspense>
-  );
+/** Staff-only: floor ordering lives on Employee. */
+export default function OrderRedirect() {
+  redirect("/employee");
 }

@@ -1,27 +1,32 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { PhoneNav, PhoneShell } from "@/components/phone-nav";
 import { menuCategories, type PayMethod } from "@/lib/demo-data";
 import { useOps } from "@/lib/ops-store";
 import { cn, formatNpr } from "@/lib/utils";
 
-type Step = "seat" | "menu" | "done";
+type Step = "seat" | "menu" | "done" | "paydesk";
 
-export function OrderClient() {
-  const searchParams = useSearchParams();
-  const { state, placeGuestOrder, settleBill, ready } = useOps();
+export default function EmployeePage() {
+  const {
+    state,
+    setRole,
+    placeWaiterOrder,
+    settleBill,
+    payableTotal,
+    ready,
+  } = useOps();
   const [step, setStep] = useState<Step>("seat");
   const [tableId, setTableId] = useState<string | "walk-in">("walk-in");
-  const [prefilled, setPrefilled] = useState(false);
   const [cart, setCart] = useState<Record<string, number>>({});
   const [category, setCategory] = useState("all");
   const [orderId, setOrderId] = useState("");
   const [orderTotal, setOrderTotal] = useState(0);
-  const [payMethod, setPayMethod] = useState<PayMethod>("upi");
+  const [payMethod, setPayMethod] = useState<PayMethod>("cash");
   const [paid, setPaid] = useState(false);
+  const [payFor, setPayFor] = useState<string | null>(null);
 
   const lines = useMemo(
     () =>
@@ -45,21 +50,13 @@ export function OrderClient() {
       ? "Walk-in"
       : (state.tables.find((t) => t.id === tableId)?.label ?? tableId);
 
-  useEffect(() => {
-    if (!ready || prefilled) return;
-    const q = searchParams.get("table");
-    if (!q) return;
-    const match = state.tables.find(
-      (t) =>
-        t.id === q ||
-        t.label.split(" · ")[0].toLowerCase() === q.toLowerCase(),
-    );
-    if (match) {
-      setTableId(match.id);
-      setStep("menu");
-      setPrefilled(true);
-    }
-  }, [ready, prefilled, searchParams, state.tables]);
+  const openBills = useMemo(
+    () =>
+      state.orders.filter(
+        (o) => o.status !== "paid" && o.status !== "cancelled",
+      ),
+    [state.orders],
+  );
 
   function bump(id: string, delta: number) {
     setCart((prev) => {
@@ -73,34 +70,29 @@ export function OrderClient() {
 
   function sendOrder() {
     if (!lines.length) return;
+    setRole("waiter");
     const tableCode =
       tableId === "walk-in"
         ? null
         : (state.tables.find((t) => t.id === tableId)?.label.split(" · ")[0] ??
           null);
-    const id = placeGuestOrder({
+    const id = placeWaiterOrder({
       table: tableCode,
       type: "dine-in",
-      guest: tableCode ? `Guest · ${tableCode}` : "Walk-in",
+      guest: tableCode ? `Table · ${tableCode}` : "Walk-in",
       lines: lines.map((l) => ({
         menuItemId: l.item.id,
         name: l.item.name,
         qty: l.qty,
       })),
       total: subtotal,
-      source: "guest",
+      source: "waiter",
     });
     setOrderId(id);
     setOrderTotal(subtotal);
     setCart({});
     setStep("done");
     setPaid(false);
-  }
-
-  function payNow() {
-    if (!orderId) return;
-    settleBill(orderId, payMethod, 0);
-    setPaid(true);
   }
 
   function reset() {
@@ -154,21 +146,104 @@ export function OrderClient() {
       }
     >
       <header className="sticky top-0 z-20 border-b border-[var(--garden-leaf)]/10 bg-[var(--garden-paper)]/95 px-4 py-3 backdrop-blur">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-2">
           <p className="font-[family-name:var(--font-display)] text-xl text-[var(--garden-deep)]">
-            Order
+            Employee
           </p>
-          <p className="text-xs font-medium text-[var(--garden-leaf)]">
-            {step === "seat" ? "Seat" : step === "menu" ? "Menu" : "Done"}
-          </p>
+          <div className="flex gap-1">
+            <button
+              type="button"
+              onClick={() => setStep(step === "paydesk" ? "seat" : "paydesk")}
+              className="min-h-10 rounded-xl px-3 text-sm font-medium text-[var(--garden-leaf)]"
+            >
+              {step === "paydesk" ? "New order" : `Pay · ${openBills.length}`}
+            </button>
+          </div>
         </div>
       </header>
 
       <div className={cn("px-4 pt-4", showCartBar ? "pb-28" : "pb-24")}>
+        {step === "paydesk" && (
+          <section className="space-y-3">
+            <h1 className="font-[family-name:var(--font-display)] text-[1.75rem] text-[var(--garden-deep)]">
+              Open bills
+            </h1>
+            {openBills.length === 0 ? (
+              <p className="rounded-2xl bg-white px-4 py-8 text-center text-sm text-[var(--garden-ink)]/50 ring-1 ring-[var(--garden-leaf)]/10">
+                No open bills
+              </p>
+            ) : (
+              openBills.map((order) => {
+                const due = payableTotal(order);
+                const open = payFor === order.id;
+                return (
+                  <article
+                    key={order.id}
+                    className="rounded-2xl bg-white p-4 ring-1 ring-[var(--garden-leaf)]/10"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div>
+                        <p className="font-semibold text-[var(--garden-deep)]">
+                          {order.table ?? "Walk-in"}
+                        </p>
+                        <p className="text-xs text-[var(--garden-ink)]/50">
+                          {order.status}
+                        </p>
+                      </div>
+                      <p className="font-[family-name:var(--font-display)] text-xl">
+                        {formatNpr(due)}
+                      </p>
+                    </div>
+                    {!open ? (
+                      <button
+                        type="button"
+                        className="mt-4 flex min-h-14 w-full items-center justify-center rounded-2xl bg-[var(--garden-deep)] text-base font-semibold text-white"
+                        onClick={() => setPayFor(order.id)}
+                      >
+                        Take payment
+                      </button>
+                    ) : (
+                      <div className="mt-3 space-y-2">
+                        <div className="grid grid-cols-3 gap-2">
+                          {(["cash", "upi", "card"] as PayMethod[]).map((m) => (
+                            <button
+                              key={m}
+                              type="button"
+                              onClick={() => setPayMethod(m)}
+                              className={cn(
+                                "min-h-12 rounded-xl text-sm font-semibold capitalize",
+                                payMethod === m
+                                  ? "bg-[var(--garden-deep)] text-white"
+                                  : "bg-[var(--garden-fog)]",
+                              )}
+                            >
+                              {m === "upi" ? "UPI" : m}
+                            </button>
+                          ))}
+                        </div>
+                        <button
+                          type="button"
+                          className="flex min-h-14 w-full items-center justify-center rounded-2xl bg-[var(--garden-gold)] text-base font-semibold text-[var(--garden-deep)]"
+                          onClick={() => {
+                            settleBill(order.id, payMethod, 0);
+                            setPayFor(null);
+                          }}
+                        >
+                          Confirm {formatNpr(due)}
+                        </button>
+                      </div>
+                    )}
+                  </article>
+                );
+              })
+            )}
+          </section>
+        )}
+
         {step === "seat" && (
           <section>
             <h1 className="font-[family-name:var(--font-display)] text-[1.75rem] text-[var(--garden-deep)]">
-              Your seat
+              Table
             </h1>
             <button
               type="button"
@@ -180,7 +255,7 @@ export function OrderClient() {
                   : "bg-white text-[var(--garden-deep)] ring-1 ring-[var(--garden-leaf)]/12",
               )}
             >
-              Walk-in
+              Walk-in / counter
             </button>
             <div className="mt-3 grid grid-cols-2 gap-2">
               {state.tables.map((t) => {
@@ -297,7 +372,9 @@ export function OrderClient() {
 
             {!paid ? (
               <div className="mt-5 space-y-3 rounded-2xl bg-white p-4 ring-1 ring-[var(--garden-leaf)]/10">
-                <p className="font-semibold text-[var(--garden-deep)]">Pay</p>
+                <p className="font-semibold text-[var(--garden-deep)]">
+                  Collect now?
+                </p>
                 <div className="grid grid-cols-3 gap-2">
                   {(["cash", "upi", "card"] as PayMethod[]).map((m) => (
                     <button
@@ -317,21 +394,25 @@ export function OrderClient() {
                 </div>
                 <button
                   type="button"
-                  onClick={payNow}
+                  onClick={() => {
+                    if (!orderId) return;
+                    settleBill(orderId, payMethod, 0);
+                    setPaid(true);
+                  }}
                   className="flex min-h-14 w-full items-center justify-center rounded-2xl bg-[var(--garden-gold)] text-base font-semibold text-[var(--garden-deep)]"
                 >
                   Pay {formatNpr(orderTotal)}
                 </button>
                 <Link
-                  href="/staff"
+                  href="/kitchen"
                   className="block py-1 text-center text-sm text-[var(--garden-leaf)]"
                 >
-                  Pay later at Staff
+                  Open kitchen
                 </Link>
               </div>
             ) : (
               <p className="mt-5 rounded-2xl bg-emerald-50 px-4 py-5 text-center text-sm text-emerald-950 ring-1 ring-emerald-200">
-                Paid · enjoy the patio
+                Paid
               </p>
             )}
 

@@ -7,14 +7,22 @@ import { cn } from "@/lib/utils";
 const tabs = [
   { href: "/", label: "Home", match: (p: string) => p === "/" },
   {
-    href: "/order",
-    label: "Order",
-    match: (p: string) => p.startsWith("/order") || p.startsWith("/table"),
+    href: "/employee",
+    label: "Employee",
+    match: (p: string) =>
+      p.startsWith("/employee") ||
+      p.startsWith("/order") ||
+      p.startsWith("/staff"),
   },
   {
-    href: "/staff",
-    label: "Staff",
-    match: (p: string) => p.startsWith("/staff") || p.startsWith("/admin"),
+    href: "/kitchen",
+    label: "Kitchen",
+    match: (p: string) => p.startsWith("/kitchen"),
+  },
+  {
+    href: "/admin",
+    label: "Admin",
+    match: (p: string) => p.startsWith("/admin"),
   },
 ] as const;
 
@@ -36,7 +44,7 @@ export function PhoneNav({
           : "border-[var(--garden-leaf)]/12 bg-[var(--garden-paper)]/97",
       )}
     >
-      <div className="mx-auto grid max-w-md grid-cols-3">
+      <div className="mx-auto grid max-w-md grid-cols-4">
         {tabs.map((tab) => {
           const active = tab.match(pathname);
           return (
@@ -44,7 +52,7 @@ export function PhoneNav({
               key={tab.href}
               href={tab.href}
               className={cn(
-                "flex min-h-14 flex-col items-center justify-center gap-0.5 text-xs font-semibold tracking-wide",
+                "flex min-h-14 flex-col items-center justify-center gap-0.5 text-[11px] font-semibold tracking-wide",
                 dark
                   ? active
                     ? "text-white"
@@ -56,7 +64,7 @@ export function PhoneNav({
             >
               <span
                 className={cn(
-                  "h-1 w-8 rounded-full",
+                  "h-1 w-7 rounded-full",
                   active ? "bg-[var(--garden-gold)]" : "bg-transparent",
                 )}
               />
@@ -69,7 +77,7 @@ export function PhoneNav({
   );
 }
 
-/** Phone-width shell used across the cafe app. */
+/** Phone-width shell for the staff app. */
 export function PhoneShell({
   children,
   footer,

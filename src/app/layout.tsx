@@ -16,14 +16,14 @@ const body = Outfit({
 
 export const metadata: Metadata = {
   title: {
-    default: "Garden Restaurant · Lazimpat",
+    default: "Garden Restaurant · Staff",
     template: "%s · Garden Restaurant",
   },
   description:
-    "Garden Restaurant phone app — order coffee & plates, staff kitchen + pay. Lazimpat demo.",
+    "Garden Restaurant staff phone app — Admin, Employee, Kitchen. Lazimpat demo (no customer site).",
   appleWebApp: {
     capable: true,
-    title: "Garden",
+    title: "Garden Staff",
     statusBarStyle: "black-translucent",
   },
 };
