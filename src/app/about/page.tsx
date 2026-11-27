@@ -75,7 +75,7 @@ export default function AboutPage() {
       <section className="mx-auto max-w-6xl px-5 py-16 md:px-10 md:py-20">
         <Reveal>
           <h2 className="font-[family-name:var(--font-display)] text-3xl text-[var(--garden-deep)] md:text-4xl">
-            Visit the garden
+            Visit the patio
           </h2>
           <p className="mt-3 max-w-lg text-[var(--garden-ink)]/70">
             {restaurant.address} · {restaurant.hoursWeekday}
@@ -85,13 +85,13 @@ export default function AboutPage() {
               href="/contact"
               className="inline-flex h-11 items-center rounded-md bg-[var(--garden-deep)] px-5 text-sm font-semibold text-white"
             >
-              Reserve a table
+              Plan a visit
             </Link>
             <Link
               href="/menu"
               className="inline-flex h-11 items-center rounded-md border border-[var(--garden-leaf)]/25 px-5 text-sm font-medium"
             >
-              See the menu
+              See the short menu
             </Link>
           </div>
         </Reveal>

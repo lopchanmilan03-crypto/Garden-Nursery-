@@ -34,7 +34,7 @@ import {
   type Vendor,
 } from "@/lib/demo-data";
 
-const STORAGE_KEY = "garden-restaurant-ops-v2";
+const STORAGE_KEY = "garden-restaurant-ops-v3";
 
 type PlaceOrderInput = {
   table: string | null;

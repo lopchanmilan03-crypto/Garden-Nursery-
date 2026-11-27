@@ -69,7 +69,7 @@ export default function WaiterOrderPage() {
     const orderId = placeWaiterOrder({
       table: tableLabel,
       type: service,
-      guest: service === "takeaway" ? "Takeaway guest" : "Table guest",
+      guest: service === "takeaway" ? "Counter guest" : "Patio guest",
       lines: lines.map((l) => ({
         menuItemId: l.item.id,
         name: l.item.name,
@@ -101,18 +101,18 @@ export default function WaiterOrderPage() {
         <SiteNav />
         <div className="mx-auto max-w-6xl px-5 pb-6 pt-1 md:px-10">
           <p className="text-xs uppercase tracking-[0.22em] text-[var(--garden-leaf)]">
-            Waiter phone · sends to kitchen
+            Floor · table order
           </p>
           <h1 className="mt-2 font-[family-name:var(--font-display)] text-4xl text-[var(--garden-deep)] md:text-5xl">
-            Take order
+            Take a table order
           </h1>
           <p className="mt-2 max-w-xl text-[var(--garden-ink)]/70">
-            Build a table or takeaway ticket on phone — kitchen board updates
-            live, then settle cash / UPI / card.
+            Build a dine-in order for the patio — the kitchen pass updates
+            gently, then settle cash / UPI / card.
           </p>
           <div className="mt-4 flex flex-wrap items-center gap-3">
             <label className="text-sm">
-              Waiter
+              Floor staff
               <select
                 className="ml-2 h-9 rounded-md border border-[var(--garden-leaf)]/20 bg-white px-2"
                 value={state.waiterName}
@@ -131,7 +131,7 @@ export default function WaiterOrderPage() {
               </select>
             </label>
             <Link href="/kitchen" className="text-sm text-[var(--garden-leaf)]">
-              Open kitchen board →
+              Open kitchen pass →
             </Link>
           </div>
           <StepRail step={step} />
@@ -145,8 +145,8 @@ export default function WaiterOrderPage() {
               <div className="flex flex-wrap gap-2">
                 {(
                   [
-                    { id: "dine-in", label: "Table" },
-                    { id: "takeaway", label: "Takeaway" },
+                    { id: "dine-in", label: "Patio table" },
+                    { id: "takeaway", label: "Counter (rare)" },
                   ] as const
                 ).map((opt) => (
                   <button
@@ -245,7 +245,7 @@ export default function WaiterOrderPage() {
               <p className="mt-1 text-sm opacity-60">
                 {service === "dine-in"
                   ? state.tables.find((t) => t.id === tableId)?.label
-                  : "Takeaway"}{" "}
+                  : "Counter"}{" "}
                 · {itemCount} items
               </p>
               {lines.length === 0 ? (
@@ -322,7 +322,7 @@ export default function WaiterOrderPage() {
                 Billing
               </h2>
               <p className="mt-2 text-sm opacity-65">
-                Ticket {lastOrderId} is on the kitchen board.
+                Order {lastOrderId} is on the kitchen pass.
               </p>
               <div className="mt-5 space-y-3">
                 {(
@@ -425,7 +425,7 @@ export default function WaiterOrderPage() {
               {lastOrderId}
             </h2>
             <p className="mt-3 text-[var(--garden-ink)]/70">
-              Kitchen has the ticket. Payment: {payMethod.toUpperCase()} ·{" "}
+              Kitchen has the order. Payment: {payMethod.toUpperCase()} ·{" "}
               {formatNpr(total)}
             </p>
             <div className="mt-8 flex flex-wrap justify-center gap-3">
@@ -440,7 +440,7 @@ export default function WaiterOrderPage() {
                 href="/dashboard"
                 className="inline-flex h-11 items-center rounded-md border border-[var(--garden-leaf)]/25 px-5 text-sm"
               >
-                Ops board
+                Cafe ops
               </Link>
             </div>
           </div>

@@ -46,13 +46,13 @@ export default function HomePage() {
                 href="/contact"
                 className="inline-flex h-12 items-center justify-center rounded-md bg-[var(--garden-gold)] px-7 text-sm font-semibold text-[var(--garden-deep)] transition hover:brightness-105"
               >
-                Reserve a table
+                Plan a visit
               </Link>
               <Link
                 href="/menu"
                 className="inline-flex h-12 items-center justify-center rounded-md border border-white/30 bg-white/5 px-7 text-sm font-medium backdrop-blur-sm transition hover:bg-white/12"
               >
-                View menu
+                Short menu
               </Link>
             </div>
           </div>
@@ -104,11 +104,11 @@ export default function HomePage() {
               From our menu
             </p>
             <h2 className="mt-3 max-w-xl font-[family-name:var(--font-display)] text-4xl text-[var(--garden-deep)] md:text-5xl">
-              Plates worth lingering over
+              A short menu, made carefully
             </h2>
             <p className="mt-4 max-w-lg text-[var(--garden-ink)]/70">
-              Nepali cafe classics and garden brunch — prices in NPR, editable
-              from Admin like a simple CMS.
+              Coffee, chiya, a few garden plates — NPR prices from our demo CMS.
+              We keep it limited so the kitchen stays calm.
             </p>
           </Reveal>
           <div className="mt-10">
@@ -133,7 +133,7 @@ export default function HomePage() {
               Gallery
             </p>
             <h2 className="mt-3 font-[family-name:var(--font-display)] text-4xl text-[var(--garden-deep)] md:text-5xl">
-              The kind of place you stay a little longer
+              Plants, patio light, room to think
             </h2>
           </Reveal>
           <div className="mt-10 grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-4">
@@ -169,11 +169,11 @@ export default function HomePage() {
               Come visit us
             </p>
             <h2 className="mt-3 font-[family-name:var(--font-display)] text-4xl text-white md:text-5xl">
-              Come by for chiya. Stay for brunch.
+              Come for coffee. Stay among the plants.
             </h2>
             <p className="mt-4 max-w-md text-white/75">
-              Walk-ins welcome. Reserve when you want a quieter corner of the
-              patio.
+              Walk-ins welcome. Ask for a patio corner when you want quiet work
+              or a slow meal.
             </p>
           </Reveal>
           <Reveal delay={100}>
@@ -238,26 +238,27 @@ export default function HomePage() {
         <div className="mx-auto grid max-w-6xl gap-10 md:grid-cols-2 md:items-start">
           <Reveal>
             <p className="text-xs uppercase tracking-[0.28em] text-[var(--garden-leaf)]">
-              Save your seat
+              Plan a visit
             </p>
             <h2 className="mt-3 font-[family-name:var(--font-display)] text-4xl text-[var(--garden-deep)] md:text-5xl">
-              Your table is waiting
+              Save a quiet corner
             </h2>
             <p className="mt-4 max-w-md text-[var(--garden-ink)]/70">
-              Send a demo enquiry — or order from your table via guest QR.
+              Send a demo enquiry — or, once seated, browse the short menu from
+              your table QR.
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
               <Link
                 href="/table/t1"
                 className="inline-flex h-11 items-center rounded-md border border-[var(--garden-leaf)]/25 px-5 text-sm font-medium text-[var(--garden-deep)]"
               >
-                Order at table
+                Table menu
               </Link>
               <Link
                 href="/dashboard"
                 className="inline-flex h-11 items-center rounded-md px-5 text-sm font-medium text-[var(--garden-leaf)] underline-offset-4 hover:underline"
               >
-                Staff login →
+                Staff tools →
               </Link>
             </div>
           </Reveal>

@@ -94,17 +94,17 @@ export function GuestTableClient({
         <div className="mx-auto flex max-w-3xl flex-wrap items-start justify-between gap-4">
           <div>
             <p className="text-xs uppercase tracking-[0.22em] text-[var(--garden-leaf)]">
-              Guest QR menu · no login
+              Table menu · no login
             </p>
             <h1 className="mt-2 font-[family-name:var(--font-display)] text-4xl text-[var(--garden-deep)]">
               {restaurant.name}
             </h1>
             <p className="mt-1 text-[var(--garden-ink)]/70">
-              Ordering for <strong>{table.label}</strong>
+              Short menu for <strong>{table.label}</strong>
             </p>
             {metrics.lowStock.length > 0 ? (
               <p className="mt-2 text-xs text-amber-800">
-                Kitchen may substitute low-stock items.
+                A few items may be swapped if stock is low.
               </p>
             ) : null}
           </div>
@@ -120,11 +120,11 @@ export function GuestTableClient({
       <div className="mx-auto max-w-3xl px-5 py-6 md:px-10">
         {sentId ? (
           <div className="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-4 text-sm text-emerald-950">
-            Order <strong>{sentId}</strong> sent to kitchen. You can add more
-            anytime.
+            Order <strong>{sentId}</strong> is with the kitchen. Add more whenever
+            you like — no rush.
             <div className="mt-2 flex gap-3">
               <Link href="/kitchen" className="underline">
-                Kitchen board
+                Kitchen pass
               </Link>
               <button
                 type="button"

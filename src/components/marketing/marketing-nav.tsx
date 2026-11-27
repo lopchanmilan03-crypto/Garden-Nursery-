@@ -79,7 +79,7 @@ export function MarketingNav({ tone = "light" }: { tone?: "light" | "dark" }) {
                 : "bg-[var(--garden-deep)] text-[var(--garden-mist)] hover:bg-[var(--garden-leaf)]",
             )}
           >
-            Order
+            Table menu
           </Link>
           <Link
             href="/dashboard"
@@ -135,14 +135,14 @@ export function MarketingNav({ tone = "light" }: { tone?: "light" | "dark" }) {
               onClick={() => setOpen(false)}
               className="mt-2 rounded-md bg-[var(--garden-deep)] px-3 py-2.5 text-center text-sm font-semibold text-white"
             >
-              Order at table
+              Table menu
             </Link>
             <Link
               href="/dashboard"
               onClick={() => setOpen(false)}
               className="rounded-md border border-[var(--garden-leaf)]/20 px-3 py-2.5 text-center text-sm"
             >
-              Staff ops
+              Staff tools
             </Link>
           </div>
         </div>

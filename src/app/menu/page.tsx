@@ -13,14 +13,14 @@ export default function MenuPage() {
         <div className="mx-auto max-w-6xl px-5 pb-12 pt-4 md:px-10 md:pb-16">
           <Reveal>
             <p className="text-xs uppercase tracking-[0.28em] text-[var(--garden-leaf)]">
-              Menu · NPR
+              Limited menu · NPR
             </p>
             <h1 className="mt-3 font-[family-name:var(--font-display)] text-5xl text-[var(--garden-deep)] md:text-6xl">
-              From our kitchen
+              Coffee, plates, peace
             </h1>
             <p className="mt-4 max-w-xl text-[var(--garden-ink)]/70">
-              Filter by category. Prices and photos are live from demo CMS data
-              — edit them in{" "}
+              A short mindful menu — filter by category. Prices and photos come
+              from demo CMS data; edit them in{" "}
               <Link href="/admin" className="underline underline-offset-2">
                 Admin
               </Link>
@@ -37,7 +37,7 @@ export default function MenuPage() {
             href="/table/t1"
             className="inline-flex h-11 items-center rounded-md bg-[var(--garden-deep)] px-5 text-sm font-semibold text-white"
           >
-            Order at table
+            Table menu
           </Link>
           <Link
             href="/contact"

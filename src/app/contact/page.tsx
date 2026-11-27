@@ -12,14 +12,14 @@ export default function ContactPage() {
         <div className="mx-auto max-w-6xl px-5 pb-12 pt-4 md:px-10 md:pb-16">
           <Reveal>
             <p className="text-xs uppercase tracking-[0.28em] text-[var(--garden-leaf)]">
-              Contact · reservations
+              Contact · Lazimpat
             </p>
             <h1 className="mt-3 font-[family-name:var(--font-display)] text-5xl text-[var(--garden-deep)] md:text-6xl">
-              Your table is waiting
+              Find a quiet corner
             </h1>
             <p className="mt-4 max-w-xl text-[var(--garden-ink)]/70">
-              Send a demo enquiry, call us, or walk in. Guest QR ordering is
-              live for tables without a waiter login.
+              Send a demo enquiry, call us, or walk in for coffee among the
+              plants. Once seated, the table QR opens our short menu.
             </p>
           </Reveal>
         </div>
@@ -56,16 +56,16 @@ export default function ContactPage() {
             </div>
             <div className="rounded-2xl bg-[var(--garden-deep)] p-6 text-[var(--garden-mist)]">
               <p className="font-[family-name:var(--font-display)] text-2xl text-white">
-                Already seated?
+                Already on the patio?
               </p>
               <p className="mt-2 text-sm text-white/75">
-                Scan the table QR or open guest order — no staff login needed.
+                Open the table menu from your seat — no staff login needed.
               </p>
               <a
                 href="/table/t1"
                 className="mt-5 inline-flex h-10 items-center rounded-md bg-[var(--garden-gold)] px-4 text-sm font-semibold text-[var(--garden-deep)]"
               >
-                Open guest menu
+                Open table menu
               </a>
             </div>
           </div>

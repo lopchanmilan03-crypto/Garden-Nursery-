@@ -20,7 +20,7 @@ export const metadata: Metadata = {
     template: "%s · Garden Restaurant",
   },
   description:
-    "Garden Restaurant — brunch cafe in Lazimpat, Kathmandu. Menu, reservations, guest QR ordering, and staff ops (NPR demo).",
+    "Garden Restaurant — peaceful dine-in garden cafe in Lazimpat, Kathmandu. Coffee, a limited menu, patio plants, and calm staff tools (NPR demo).",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

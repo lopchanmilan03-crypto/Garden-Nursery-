@@ -60,16 +60,16 @@ export default function DashboardPage() {
         <SiteNav />
         <div className="mx-auto max-w-6xl px-5 pb-6 pt-1 md:px-10">
           <p className="text-xs uppercase tracking-[0.22em] text-[var(--garden-leaf)]">
-            Ops hub · role: {state.role} · sample data
+            Cafe ops · role: {state.role} · sample data
           </p>
           <div className="mt-2 flex flex-wrap items-end justify-between gap-4">
             <div>
               <h1 className="font-[family-name:var(--font-display)] text-4xl text-[var(--garden-deep)] md:text-5xl">
-                Owner & floor board
+                Quiet cafe tools
               </h1>
               <p className="mt-2 max-w-xl text-[var(--garden-ink)]/70">
-                Aaj ki sale, kharcha, stock alerts, billing, staff — one hub for
-                Garden Restaurant.
+                Sale, kharcha, stock, billing, and staff — kept sparse so the
+                patio stays calm.
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -77,27 +77,21 @@ export default function DashboardPage() {
                 href="/demo"
                 className="inline-flex h-11 items-center rounded-md bg-[var(--garden-leaf)] px-5 text-sm font-medium text-[var(--garden-mist)]"
               >
-                Waiter order
+                Table order
               </Link>
               <Link
                 href="/kitchen"
                 className="inline-flex h-11 items-center rounded-md border border-[var(--garden-leaf)]/25 px-5 text-sm font-medium text-[var(--garden-deep)]"
               >
-                Kitchen
+                Kitchen pass
               </Link>
             </div>
           </div>
 
           <div className="mt-4 flex flex-wrap gap-2">
-            {metrics.takeawayOpen > 0 ? (
-              <span className="rounded-md bg-amber-100 px-3 py-1 text-xs font-medium text-amber-950">
-                Takeaway / pickup queue · {metrics.takeawayOpen} open
-              </span>
-            ) : (
-              <span className="rounded-md bg-[var(--garden-fog)] px-3 py-1 text-xs font-medium text-[var(--garden-deep)]">
-                Takeaway queue clear
-              </span>
-            )}
+            <span className="rounded-md bg-[var(--garden-fog)] px-3 py-1 text-xs font-medium text-[var(--garden-deep)]">
+              Dine-in garden cafe · limited menu
+            </span>
             {state.settings.vatEnabled ? (
               <span className="rounded-md bg-white px-3 py-1 text-xs ring-1 ring-[var(--garden-leaf)]/15">
                 VAT {state.settings.vatPercent}% on
@@ -162,7 +156,7 @@ export default function DashboardPage() {
                   <strong>{formatNpr(metrics.vendorDues)}</strong>
                 </li>
                 <li className="flex justify-between gap-3">
-                  <span>Open kitchen tickets</span>
+                  <span>Orders on the pass</span>
                   <strong>
                     {
                       state.kitchenTickets.filter((t) => t.status !== "bumped")
@@ -186,10 +180,10 @@ export default function DashboardPage() {
             </section>
             <section className="lg:col-span-2 rounded-xl border border-[var(--garden-leaf)]/12 bg-white/90 p-5">
               <h2 className="font-[family-name:var(--font-display)] text-2xl text-[var(--garden-deep)]">
-                Floor tables · guest QR
+                Patio tables · QR menu
               </h2>
               <p className="mt-1 text-sm opacity-65">
-                Print or share the QR / link — guests order without waiter login.
+                Share a table link — guests browse the short menu from their seat.
               </p>
               <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
                 {state.tables.map((t) => (
@@ -227,7 +221,7 @@ export default function DashboardPage() {
               </h2>
               {unpaid.length === 0 ? (
                 <p className="text-sm text-[var(--garden-ink)]/60">
-                  No open tickets to settle.
+                  No open bills to settle.
                 </p>
               ) : (
                 unpaid.map((o) => {

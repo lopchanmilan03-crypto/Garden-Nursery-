@@ -10,7 +10,7 @@ export function MarketingFooter() {
             {restaurant.name}
           </p>
           <p className="mt-3 max-w-sm text-sm leading-relaxed text-[var(--garden-mist)]/75">
-            {restaurant.tagline}. Brunch, chiya, and garden plates in Lazimpat.
+            {restaurant.tagline}. Coffee, a short menu, and calm work in Lazimpat.
           </p>
         </div>
         <div>
@@ -38,10 +38,10 @@ export function MarketingFooter() {
               About
             </Link>
             <Link href="/contact" className="hover:text-white">
-              Reserve a table
+              Plan a visit
             </Link>
             <Link href="/table/t1" className="hover:text-white">
-              Guest order
+              Table menu
             </Link>
             <Link href="/dashboard" className="hover:text-white">
               Staff

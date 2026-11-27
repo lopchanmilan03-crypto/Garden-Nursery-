@@ -8,9 +8,9 @@ import { RoleSwitcher } from "@/components/role-switcher";
 
 const links = [
   { href: "/", label: "Site" },
-  { href: "/demo", label: "Waiter" },
-  { href: "/table/t1", label: "Guest QR" },
-  { href: "/kitchen", label: "Kitchen" },
+  { href: "/demo", label: "Floor" },
+  { href: "/table/t1", label: "Table QR" },
+  { href: "/kitchen", label: "Pass" },
   { href: "/dashboard", label: "Ops" },
   { href: "/admin", label: "Admin" },
 ];

@@ -164,183 +164,133 @@ export type MonthlyPoint = {
 
 export const restaurant = {
   name: "Garden Restaurant",
-  tagline: "Fresh plates under the leaves",
+  tagline: "Peace among the plants",
   subtitle:
-    "A calm Kathmandu cafe for slow mornings, shared tables, and garden-grown flavors.",
+    "A quiet Lazimpat garden cafe — coffee, a limited mindful menu, and space to work slowly.",
   location: "Lazimpat, Kathmandu",
   address: "Lazimpat Road, Kathmandu 44600, Nepal",
-  hours: "7:00 – 21:00 · Asia/Kathmandu",
-  hoursWeekday: "Mon–Fri · 7:00 AM – 9:00 PM",
-  hoursWeekend: "Sat–Sun · 8:00 AM – 9:00 PM",
+  hours: "8:00 – 20:00 · Asia/Kathmandu",
+  hoursWeekday: "Mon–Fri · 8:00 AM – 8:00 PM",
+  hoursWeekend: "Sat–Sun · 8:00 AM – 8:00 PM",
   phone: "+977-1-4001234",
   email: "hello@gardenrestaurant.np",
   currency: "NPR" as const,
-  heroHeadline: "Good food. Quiet mornings.",
+  heroHeadline: "Coffee. Plants. Quiet work.",
   heroSupport:
-    "Brunch plates, garden greens, and Nepali cafe classics — served under the leaves in Lazimpat.",
-  storyTitle: "A little story behind every plate",
+    "Dine among the greenery in Lazimpat — filter coffee, a short seasonal menu, and a patio made for calm mornings.",
+  storyTitle: "A garden cafe, not a rush hour",
   storyLead:
-    "Garden Restaurant started as a terrace kitchen for neighbours who wanted slower mornings and honest food.",
+    "Garden Restaurant is a dine-in cafe tucked among plants — for coffee, light plates, and unhurried work.",
   storyBody:
-    "We still cook with market-morning vegetables, Nepali beans, and herbs from planters along the patio. Come for chiya and stay for dal bhat — or the other way around.",
+    "We keep the menu small on purpose. Herbs from the patio planters, Nepali beans in the pour-over, and enough quiet that you can finish a chapter or a call.",
   storyLong: [
-    "Anupam opened Garden Restaurant after years of feeding friends on a Lazimpat rooftop. The idea was simple: a cafe that felt like a garden — leafy, unhurried, and open from early chiya to late dinner.",
-    "Today the patio seats fill with regulars, travellers, and families who share momos, filter coffee, and long conversations. Our kitchen still shops Kalimati at dawn and writes the board by hand when something runs low.",
-    "We are not a franchise template. We are a neighbourhood cafe that happens to run a proper floor — waiter tablets, kitchen tickets, and all — so your brunch arrives hot.",
+    "Anupam opened Garden Restaurant after years of serving friends on a Lazimpat terrace. The idea was never a busy floor — it was a garden cafe: leafy, slow, and open for coffee and a few honest plates.",
+    "Guests come for filter coffee, chiya, and a short menu of garden salads, dal bhat, and momos. Laptops are welcome. Waiting lists are not. The patio is for conversation and calm work among the plants.",
+    "Staff tools stay simple — table menus, a quiet kitchen pass, and gentle billing — so the room can stay peaceful while your coffee arrives warm.",
   ],
 };
 
-/** Public-site imagery — Unsplash cafe/garden food (not third-party brand assets). */
+/** Public-site imagery — Unsplash garden/cafe/coffee (placeholders, not third-party brands). */
 export const marketingGallery: GalleryImage[] = [
   {
     id: "g1",
-    src: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=1200&q=80",
-    alt: "Shared table with brunch plates",
-    caption: "Shared tables",
+    src: "https://images.unsplash.com/photo-1466978913421-dad2ebd01d17?auto=format&fit=crop&w=1200&q=80",
+    alt: "Outdoor cafe patio with greenery",
+    caption: "Patio among plants",
   },
   {
     id: "g2",
-    src: "https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=1200&q=80",
-    alt: "Cafe interior with warm light",
-    caption: "Inside the garden",
-  },
-  {
-    id: "g3",
     src: "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1200&q=80",
     alt: "Pour-over coffee preparation",
     caption: "Garden filter coffee",
   },
   {
+    id: "g3",
+    src: "https://images.unsplash.com/photo-1416879595882-3373a0480b5b?auto=format&fit=crop&w=1200&q=80",
+    alt: "Lush potted plants and leaves",
+    caption: "Peace among plants",
+  },
+  {
     id: "g4",
-    src: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1200&q=80",
-    alt: "Evening restaurant seating",
-    caption: "Stay a little longer",
+    src: "https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=1200&q=80",
+    alt: "Quiet cafe corner with warm light",
+    caption: "Slow work corner",
   },
   {
     id: "g5",
-    src: "https://images.unsplash.com/photo-1466978913421-dad2ebd01d17?auto=format&fit=crop&w=1200&q=80",
-    alt: "Outdoor cafe patio greenery",
-    caption: "Patio greens",
+    src: "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=1200&q=80",
+    alt: "Fresh green salad plate",
+    caption: "Limited mindful menu",
   },
   {
     id: "g6",
-    src: "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=1200&q=80",
-    alt: "Seasonal plated dish",
-    caption: "Seasonal plates",
+    src: "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=1200&q=80",
+    alt: "Laptop and coffee on a cafe table",
+    caption: "Stay as long as you need",
   },
 ];
 
 export const marketingHeroImage =
-  "https://images.unsplash.com/photo-1559339352-11d035aa65de?auto=format&fit=crop&w=1800&q=80";
+  "https://images.unsplash.com/photo-1466978913421-dad2ebd01d17?auto=format&fit=crop&w=1800&q=80";
 
 export const marketingAboutImage =
-  "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=1400&q=80";
+  "https://images.unsplash.com/photo-1416879595882-3373a0480b5b?auto=format&fit=crop&w=1400&q=80";
 
 export const testimonials: Testimonial[] = [
   {
     id: "t1",
     quote:
-      "The patio chiya and dal bhat ruined every rushed breakfast for me. I bring clients here on purpose.",
+      "I finish half my week’s writing here — filter coffee, soft light, and nobody hurrying the table.",
     name: "Niraj T.",
     detail: "Regular since 2022",
   },
   {
     id: "t2",
     quote:
-      "Momos arrive hot, the greens taste like a garden, and nobody rushes you out. Rare in Lazimpat.",
+      "A short menu done carefully. The patio plants make Lazimpat feel far quieter than it is.",
     name: "Sama K.",
-    detail: "Weekend brunch",
+    detail: "Weekend mornings",
   },
   {
     id: "t3",
     quote:
-      "Filter coffee worth the walk. Soft light, real plants, and staff who remember how you take your lemon.",
+      "Came for chiya, stayed for calm work. Real plants, soft corners, staff who leave you in peace.",
     name: "Elliot M.",
     detail: "Visitor from Pokhara",
   },
 ];
 
 export const roles: { id: Role; label: string; hint: string }[] = [
-  { id: "owner", label: "Owner / Admin", hint: "Sales, kharcha, reports, settings" },
-  { id: "waiter", label: "Waiter", hint: "Phone ordering to kitchen" },
-  { id: "kitchen", label: "Kitchen", hint: "Live ticket screen" },
-  { id: "cashier", label: "Cashier", hint: "Billing & day close" },
+  { id: "owner", label: "Owner / Admin", hint: "Sales, kharcha, quiet reports" },
+  { id: "waiter", label: "Floor", hint: "Table orders to the kitchen" },
+  { id: "kitchen", label: "Kitchen", hint: "Calm pass for dine-in plates" },
+  { id: "cashier", label: "Cashier", hint: "Gentle billing & day close" },
 ];
 
 export const menuCategories: { id: MenuCategory; label: string }[] = [
-  { id: "mains", label: "Mains" },
-  { id: "sides", label: "Sides" },
-  { id: "drinks", label: "Drinks" },
-  { id: "sweets", label: "Sweets" },
+  { id: "mains", label: "Plates" },
+  { id: "sides", label: "Garden" },
+  { id: "drinks", label: "Coffee & chiya" },
+  { id: "sweets", label: "Something sweet" },
 ];
 
+/** Limited mindful menu — coffee, light plates, a little sweet. */
 export const seedMenuItems: MenuItem[] = [
   {
-    id: "dal-bhat",
-    name: "Garden Dal Bhat",
-    description: "Slow-cooked lentils, steamed rice, seasonal tarkari, pickle.",
-    price: 450,
-    category: "mains",
+    id: "filter-coffee",
+    name: "Garden Filter Coffee",
+    description: "Single-origin Nepali beans, pour-over, lightly floral.",
+    price: 180,
+    category: "drinks",
     popular: true,
-    stockSkuId: "sku-dal",
+    stockSkuId: "sku-coffee",
     image:
-      "https://images.unsplash.com/photo-1585937421612-70a008356fbe?auto=format&fit=crop&w=900&q=80",
-  },
-  {
-    id: "thukpa",
-    name: "Herb Thukpa Bowl",
-    description: "Clear broth, hand-pulled noodles, garden greens, chili oil.",
-    price: 380,
-    category: "mains",
-    popular: true,
-    stockSkuId: "sku-noodles",
-    image:
-      "https://images.unsplash.com/photo-1569718212165-3a8278d5f624?auto=format&fit=crop&w=900&q=80",
-  },
-  {
-    id: "momos",
-    name: "Steam Momos (8)",
-    description: "Chicken or veg, sesame achar, ginger dipping broth.",
-    price: 320,
-    category: "mains",
-    stockSkuId: "sku-momo",
-    image:
-      "https://images.unsplash.com/photo-1496116218417-1a781b1c416c?auto=format&fit=crop&w=900&q=80",
-  },
-  {
-    id: "flatbread",
-    name: "Wood-oven Flatbread",
-    description: "Tomato, buffalo mozzarella, basil from the terrace planters.",
-    price: 520,
-    category: "mains",
-    stockSkuId: "sku-flour",
-    image:
-      "https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=900&q=80",
-  },
-  {
-    id: "salad",
-    name: "Terrace Green Salad",
-    description: "Mixed leaves, cucumber, toasted peanuts, lime-honey dressing.",
-    price: 280,
-    category: "sides",
-    stockSkuId: "sku-greens",
-    image:
-      "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=900&q=80",
-  },
-  {
-    id: "fries",
-    name: "Herb Salt Fries",
-    description: "Crispy potato wedges with rosemary and smoked chili mayo.",
-    price: 220,
-    category: "sides",
-    stockSkuId: "sku-potato",
-    image:
-      "https://images.unsplash.com/photo-1573080496219-bb080dd4f877?auto=format&fit=crop&w=900&q=80",
+      "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=900&q=80",
   },
   {
     id: "chiya",
     name: "Masala Chiya",
-    description: "Cardamom, ginger, black tea — served in a clay cup.",
+    description: "Cardamom, ginger, black tea — clay cup, unhurried.",
     price: 80,
     category: "drinks",
     popular: true,
@@ -349,19 +299,9 @@ export const seedMenuItems: MenuItem[] = [
       "https://images.unsplash.com/photo-1571934811356-5cc061b6821f?auto=format&fit=crop&w=900&q=80",
   },
   {
-    id: "filter-coffee",
-    name: "Garden Filter Coffee",
-    description: "Single-origin Nepali beans, pour-over, lightly floral.",
-    price: 180,
-    category: "drinks",
-    stockSkuId: "sku-coffee",
-    image:
-      "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=900&q=80",
-  },
-  {
     id: "lemonade",
     name: "Mint Lemonade",
-    description: "Fresh lemon, muddled mint, a touch of Himalayan salt.",
+    description: "Fresh lemon, patio mint, a touch of Himalayan salt.",
     price: 160,
     category: "drinks",
     stockSkuId: "sku-lemon",
@@ -369,29 +309,41 @@ export const seedMenuItems: MenuItem[] = [
       "https://images.unsplash.com/photo-1621263764928-df1444c5e859?auto=format&fit=crop&w=900&q=80",
   },
   {
-    id: "lassi",
-    name: "Mango Lassi",
-    description: "Thick yogurt, ripe mango, crushed cardamom.",
-    price: 200,
-    category: "drinks",
-    stockSkuId: "sku-yogurt",
+    id: "salad",
+    name: "Terrace Green Salad",
+    description: "Mixed leaves from the planters, cucumber, lime-honey dressing.",
+    price: 280,
+    category: "sides",
+    popular: true,
+    stockSkuId: "sku-greens",
     image:
-      "https://images.unsplash.com/photo-1525385133512-2f3bdd039054?auto=format&fit=crop&w=900&q=80",
+      "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=900&q=80",
   },
   {
-    id: "sel-roti",
-    name: "Sel Roti & Honey",
-    description: "Crisp rice rings with local wildflower honey.",
-    price: 150,
-    category: "sweets",
-    stockSkuId: "sku-rice",
+    id: "dal-bhat",
+    name: "Garden Dal Bhat",
+    description: "Slow lentils, steamed rice, seasonal tarkari, pickle — one thoughtful plate.",
+    price: 450,
+    category: "mains",
+    popular: true,
+    stockSkuId: "sku-dal",
     image:
-      "https://images.unsplash.com/photo-1486427944299-d1955d23e34d?auto=format&fit=crop&w=900&q=80",
+      "https://images.unsplash.com/photo-1585937421612-70a008356fbe?auto=format&fit=crop&w=900&q=80",
+  },
+  {
+    id: "momos",
+    name: "Steam Momos (6)",
+    description: "Veg or chicken, sesame achar — a small share for the table.",
+    price: 280,
+    category: "mains",
+    stockSkuId: "sku-momo",
+    image:
+      "https://images.unsplash.com/photo-1496116218417-1a781b1c416c?auto=format&fit=crop&w=900&q=80",
   },
   {
     id: "brownie",
     name: "Walnut Brownie",
-    description: "Warm square, cocoa dust, vanilla cream.",
+    description: "Warm square with cocoa dust — for slow afternoons.",
     price: 240,
     category: "sweets",
     stockSkuId: "sku-cocoa",
@@ -408,31 +360,19 @@ export const seedTables: TableSeat[] = [
   { id: "t2", label: "T2 · Patio", seats: 4, status: "seated", orderId: "ord-1042" },
   { id: "t3", label: "T3 · Window", seats: 2, status: "ordered", orderId: "ord-1041" },
   { id: "t4", label: "T4 · Window", seats: 4, status: "open" },
-  { id: "t5", label: "T5 · Garden", seats: 6, status: "clearing" },
-  { id: "t6", label: "T6 · Garden", seats: 4, status: "ordered", orderId: "ord-1040" },
-  { id: "t7", label: "T7 · Counter", seats: 2, status: "open" },
-  { id: "t8", label: "T8 · Lounge", seats: 3, status: "seated", orderId: "ord-1043" },
+  { id: "t5", label: "T5 · Garden", seats: 4, status: "open" },
+  { id: "t6", label: "T6 · Garden", seats: 4, status: "seated", orderId: "ord-1040" },
 ];
 
 export const demoTables = seedTables;
 
 export const seedOrders: DemoOrder[] = [
   {
-    id: "ord-1043",
-    table: "T8",
-    guest: "Walk-in",
-    items: ["Masala Chiya ×2", "Walnut Brownie"],
-    total: 400,
-    status: "new",
-    placedAt: "14:52",
-    type: "dine-in",
-  },
-  {
     id: "ord-1042",
     table: "T2",
     guest: "Anisha R.",
-    items: ["Garden Dal Bhat", "Mint Lemonade"],
-    total: 610,
+    items: ["Garden Filter Coffee", "Terrace Green Salad"],
+    total: 460,
     status: "preparing",
     placedAt: "14:38",
     type: "dine-in",
@@ -441,8 +381,8 @@ export const seedOrders: DemoOrder[] = [
     id: "ord-1041",
     table: "T3",
     guest: "Pratik S.",
-    items: ["Steam Momos (8)", "Herb Thukpa Bowl", "Filter Coffee"],
-    total: 880,
+    items: ["Garden Dal Bhat", "Masala Chiya"],
+    total: 530,
     status: "ready",
     placedAt: "14:21",
     type: "dine-in",
@@ -450,9 +390,9 @@ export const seedOrders: DemoOrder[] = [
   {
     id: "ord-1040",
     table: "T6",
-    guest: "Family of 4",
-    items: ["Flatbread", "Terrace Salad", "Mango Lassi ×2", "Sel Roti"],
-    total: 1150,
+    guest: "Laptop guest",
+    items: ["Garden Filter Coffee ×2", "Walnut Brownie"],
+    total: 600,
     status: "served",
     placedAt: "13:55",
     type: "dine-in",
@@ -460,25 +400,14 @@ export const seedOrders: DemoOrder[] = [
   },
   {
     id: "ord-1039",
-    table: null,
-    guest: "Takeaway · Raju",
-    items: ["Garden Dal Bhat", "Masala Chiya"],
-    total: 530,
+    table: "T4",
+    guest: "Walk-in",
+    items: ["Mint Lemonade", "Steam Momos (6)"],
+    total: 440,
     status: "paid",
     placedAt: "13:40",
-    type: "takeaway",
+    type: "dine-in",
     payMethod: "cash",
-  },
-  {
-    id: "ord-1038",
-    table: null,
-    guest: "Takeaway · Office",
-    items: ["Herb Thukpa ×3", "Fries ×2"],
-    total: 1580,
-    status: "paid",
-    placedAt: "13:28",
-    type: "takeaway",
-    payMethod: "card",
   },
 ];
 
@@ -486,32 +415,18 @@ export const demoOrders = seedOrders;
 
 export const seedKitchenTickets: KitchenTicket[] = [
   {
-    id: "kt-2201",
-    table: "T8",
-    type: "dine-in",
-    guest: "Walk-in",
-    waiter: "Sita",
-    lines: [
-      { menuItemId: "chiya", name: "Masala Chiya", qty: 2 },
-      { menuItemId: "brownie", name: "Walnut Brownie", qty: 1 },
-    ],
-    status: "queued",
-    placedAt: "14:52",
-    total: 400,
-  },
-  {
     id: "kt-2200",
     table: "T2",
     type: "dine-in",
     guest: "Anisha R.",
     waiter: "Ram",
     lines: [
-      { menuItemId: "dal-bhat", name: "Garden Dal Bhat", qty: 1 },
-      { menuItemId: "lemonade", name: "Mint Lemonade", qty: 1 },
+      { menuItemId: "filter-coffee", name: "Garden Filter Coffee", qty: 1 },
+      { menuItemId: "salad", name: "Terrace Green Salad", qty: 1 },
     ],
     status: "preparing",
     placedAt: "14:38",
-    total: 610,
+    total: 460,
   },
   {
     id: "kt-2199",
@@ -520,13 +435,12 @@ export const seedKitchenTickets: KitchenTicket[] = [
     guest: "Pratik S.",
     waiter: "Sita",
     lines: [
-      { menuItemId: "momos", name: "Steam Momos (8)", qty: 1 },
-      { menuItemId: "thukpa", name: "Herb Thukpa Bowl", qty: 1 },
-      { menuItemId: "filter-coffee", name: "Garden Filter Coffee", qty: 1 },
+      { menuItemId: "dal-bhat", name: "Garden Dal Bhat", qty: 1 },
+      { menuItemId: "chiya", name: "Masala Chiya", qty: 1 },
     ],
     status: "ready",
     placedAt: "14:21",
-    total: 880,
+    total: 530,
   },
 ];
 
@@ -625,7 +539,7 @@ export const seedExpenses: Expense[] = [
   {
     id: "ex-5",
     categoryId: "exp-misc",
-    label: "Takeaway boxes",
+    label: "Planter soil & pots",
     amount: 650,
     date: "2026-11-25",
     paid: true,
@@ -691,9 +605,9 @@ export const seedStaff: StaffMember[] = [
 
 export const seedDayClose: DayClose = {
   date: "2026-11-27",
-  cash: 530,
-  card: 1580,
-  upi: 1150,
+  cash: 440,
+  card: 0,
+  upi: 600,
   expenses: 3600,
   closed: false,
 };

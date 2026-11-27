@@ -18,8 +18,8 @@ export function ReservationForm({ compact = false }: { compact?: boolean }) {
           Enquiry received
         </p>
         <p className="mt-2 text-sm text-[var(--garden-ink)]/75">
-          Demo only — we&apos;ll pretend to hold your table. Call{" "}
-          <span className="font-medium">+977-1-4001234</span> for a real booking.
+          Demo only — we&apos;ll note a quiet patio corner for you. Call{" "}
+          <span className="font-medium">+977-1-4001234</span> for a real visit.
         </p>
         <button
           type="button"
