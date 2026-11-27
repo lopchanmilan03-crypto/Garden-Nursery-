@@ -27,9 +27,19 @@ export default function KitchenPage() {
               display friendly.
             </p>
           </div>
-          <p className="rounded-md bg-white/10 px-4 py-2 text-sm">
-            Open tickets: <strong>{active.length}</strong>
-          </p>
+          <div className="flex flex-wrap gap-2">
+            <p className="rounded-md bg-white/10 px-4 py-2 text-sm">
+              Open tickets: <strong>{active.length}</strong>
+            </p>
+            <p className="rounded-md bg-amber-400/20 px-4 py-2 text-sm text-amber-50">
+              Takeaway / pickup:{" "}
+              <strong>
+                {
+                  active.filter((t) => t.type === "takeaway").length
+                }
+              </strong>
+            </p>
+          </div>
         </div>
 
         <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-3">

@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
+import { DemoQr } from "@/components/demo-qr";
 import { SiteNav } from "@/components/site-nav";
 import { Button } from "@/components/ui/button";
 import { useOps } from "@/lib/ops-store";
@@ -9,10 +11,13 @@ import type { MenuCategory, Role } from "@/lib/demo-data";
 
 const sections = [
   { id: "menu", label: "Menu & prices" },
+  { id: "recipes", label: "Recipes → stock" },
   { id: "stock", label: "Stock thresholds" },
+  { id: "vat", label: "VAT" },
   { id: "staff", label: "Staff" },
   { id: "expenses", label: "Expense categories" },
   { id: "vendors", label: "Vendors" },
+  { id: "qr", label: "Table QR" },
 ] as const;
 
 type SectionId = (typeof sections)[number]["id"];
@@ -21,6 +26,7 @@ export default function AdminPage() {
   const {
     state,
     updateMenuItem,
+    updateRecipe,
     addMenuItem,
     updateStock,
     updateStaff,
@@ -30,6 +36,7 @@ export default function AdminPage() {
     addExpense,
     updateVendor,
     addVendor,
+    updateSettings,
     resetDemo,
   } = useOps();
   const [section, setSection] = useState<SectionId>("menu");
@@ -162,6 +169,134 @@ export default function AdminPage() {
             >
               Add menu item
             </Button>
+          </div>
+        )}
+
+        {section === "recipes" && (
+          <div className="space-y-4">
+            <p className="text-sm text-[var(--garden-ink)]/70">
+              Confirming an order deducts these ingredient quantities × line qty
+              from live stock.
+            </p>
+            {state.menuItems.map((item) => (
+              <div
+                key={item.id}
+                className="rounded-lg border border-[var(--garden-leaf)]/12 bg-white p-4"
+              >
+                <p className="font-medium text-[var(--garden-deep)]">{item.name}</p>
+                <div className="mt-3 space-y-2">
+                  {(item.recipe ?? []).map((r, idx) => (
+                    <div key={`${r.skuId}-${idx}`} className="flex flex-wrap gap-2">
+                      <select
+                        className="h-9 rounded-md border border-[var(--garden-leaf)]/20 px-2 text-sm"
+                        value={r.skuId}
+                        onChange={(e) => {
+                          const next = [...(item.recipe ?? [])];
+                          next[idx] = { ...next[idx], skuId: e.target.value };
+                          updateRecipe(item.id, next);
+                        }}
+                      >
+                        {state.stock.map((s) => (
+                          <option key={s.id} value={s.id}>
+                            {s.name}
+                          </option>
+                        ))}
+                      </select>
+                      <input
+                        type="number"
+                        step="0.01"
+                        className="h-9 w-24 rounded-md border border-[var(--garden-leaf)]/20 px-2 text-sm"
+                        value={r.qty}
+                        onChange={(e) => {
+                          const next = [...(item.recipe ?? [])];
+                          next[idx] = {
+                            ...next[idx],
+                            qty: Number(e.target.value) || 0,
+                          };
+                          updateRecipe(item.id, next);
+                        }}
+                      />
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() =>
+                          updateRecipe(
+                            item.id,
+                            (item.recipe ?? []).filter((_, i) => i !== idx),
+                          )
+                        }
+                      >
+                        Remove
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="mt-3"
+                  onClick={() =>
+                    updateRecipe(item.id, [
+                      ...(item.recipe ?? []),
+                      { skuId: state.stock[0]?.id ?? "sku-dal", qty: 0.1 },
+                    ])
+                  }
+                >
+                  Add ingredient
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {section === "vat" && (
+          <div className="max-w-md space-y-4 rounded-xl border border-[var(--garden-leaf)]/12 bg-white p-5">
+            <label className="flex items-center gap-3 text-sm">
+              <input
+                type="checkbox"
+                checked={state.settings.vatEnabled}
+                onChange={(e) =>
+                  updateSettings({ vatEnabled: e.target.checked })
+                }
+              />
+              Apply Nepal VAT on bills (demo)
+            </label>
+            <label className="block text-sm">
+              VAT %
+              <input
+                type="number"
+                className="mt-1 h-10 w-full rounded-md border border-[var(--garden-leaf)]/20 px-3"
+                value={state.settings.vatPercent}
+                onChange={(e) =>
+                  updateSettings({
+                    vatPercent: Number(e.target.value) || 0,
+                  })
+                }
+              />
+            </label>
+            <p className="text-xs opacity-60">
+              Default 13% — toggled on bills in Ops → Billing.
+            </p>
+          </div>
+        )}
+
+        {section === "qr" && (
+          <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
+            {state.tables.map((t) => (
+              <div
+                key={t.id}
+                className="rounded-lg border border-[var(--garden-leaf)]/12 bg-white p-4 text-center"
+              >
+                <DemoQr seed={`table-${t.id}`} size={100} className="mx-auto" />
+                <p className="mt-3 font-medium">{t.label}</p>
+                <Link
+                  href={`/table/${t.id}`}
+                  className="mt-1 inline-block text-sm text-[var(--garden-leaf)] underline"
+                >
+                  /table/{t.id}
+                </Link>
+              </div>
+            ))}
           </div>
         )}
 

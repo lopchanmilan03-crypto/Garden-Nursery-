@@ -2,6 +2,11 @@ export type Role = "owner" | "waiter" | "kitchen" | "cashier";
 
 export type MenuCategory = "mains" | "sides" | "drinks" | "sweets";
 
+export type RecipeLine = {
+  skuId: string;
+  qty: number;
+};
+
 export type MenuItem = {
   id: string;
   name: string;
@@ -10,6 +15,7 @@ export type MenuItem = {
   category: MenuCategory;
   popular?: boolean;
   stockSkuId?: string;
+  recipe?: RecipeLine[];
 };
 
 export type OrderStatus =
@@ -27,6 +33,8 @@ export type KitchenTicketLine = {
   name: string;
   qty: number;
   note?: string;
+  voided?: boolean;
+  voidReason?: string;
 };
 
 export type KitchenTicket = {
@@ -42,6 +50,15 @@ export type KitchenTicket = {
   notes?: string;
 };
 
+export type BillSplit = {
+  id: string;
+  label: string;
+  amount: number;
+  seats?: number;
+  paid?: boolean;
+  payMethod?: PayMethod;
+};
+
 export type DemoOrder = {
   id: string;
   table: string | null;
@@ -54,6 +71,11 @@ export type DemoOrder = {
   type: "dine-in" | "takeaway";
   payMethod?: PayMethod;
   tip?: number;
+  discountPct?: number;
+  voidReason?: string;
+  splits?: BillSplit[];
+  source?: "waiter" | "guest";
+  stockDeducted?: boolean;
 };
 
 export type TableSeat = {
@@ -586,6 +608,11 @@ export function dashboardStats() {
   };
 }
 
+export type OpsSettings = {
+  vatEnabled: boolean;
+  vatPercent: number;
+};
+
 export type OpsState = {
   menuItems: MenuItem[];
   tables: TableSeat[];
@@ -600,11 +627,45 @@ export type OpsState = {
   monthly: MonthlyPoint[];
   role: Role;
   waiterName: string;
+  settings: OpsSettings;
 };
+
+/** Attach simple recipe lines from stockSkuId when missing. */
+export function withSeedRecipes(items: MenuItem[]): MenuItem[] {
+  return items.map((item) => {
+    if (item.recipe?.length) return item;
+    if (!item.stockSkuId) return { ...item, recipe: [] };
+    const base: RecipeLine[] = [{ skuId: item.stockSkuId, qty: 0.25 }];
+    // Light secondary ingredients for a more realistic demo
+    if (item.category === "mains" && item.stockSkuId !== "sku-greens") {
+      base.push({ skuId: "sku-greens", qty: 0.05 });
+    }
+    if (item.id === "dal-bhat") {
+      return {
+        ...item,
+        recipe: [
+          { skuId: "sku-dal", qty: 0.15 },
+          { skuId: "sku-rice", qty: 0.2 },
+          { skuId: "sku-greens", qty: 0.08 },
+        ],
+      };
+    }
+    if (item.id === "momos") {
+      return {
+        ...item,
+        recipe: [
+          { skuId: "sku-momo", qty: 1 },
+          { skuId: "sku-greens", qty: 0.05 },
+        ],
+      };
+    }
+    return { ...item, recipe: base };
+  });
+}
 
 export function createSeedState(): OpsState {
   return {
-    menuItems: structuredClone(seedMenuItems),
+    menuItems: withSeedRecipes(structuredClone(seedMenuItems)),
     tables: structuredClone(seedTables),
     orders: structuredClone(seedOrders),
     kitchenTickets: structuredClone(seedKitchenTickets),
@@ -617,13 +678,68 @@ export function createSeedState(): OpsState {
     monthly: structuredClone(seedMonthly),
     role: "owner",
     waiterName: "Sita Gurung",
+    settings: { vatEnabled: true, vatPercent: 13 },
   };
 }
 
-export function todaySale(orders: DemoOrder[]) {
+export function activeLines(order: DemoOrder): KitchenTicketLine[] {
+  return (order.lines ?? []).filter((l) => !l.voided);
+}
+
+export function orderSubtotal(order: DemoOrder, menu: MenuItem[]): number {
+  const lines = activeLines(order);
+  if (lines.length) {
+    return lines.reduce((sum, l) => {
+      const price = menu.find((m) => m.id === l.menuItemId)?.price ?? 0;
+      return sum + price * l.qty;
+    }, 0);
+  }
+  return order.total;
+}
+
+export function orderPayableTotal(
+  order: DemoOrder,
+  menu: MenuItem[],
+  settings: OpsSettings,
+): number {
+  if (order.status === "cancelled") return 0;
+  const sub = orderSubtotal(order, menu);
+  const afterDiscount = sub * (1 - (order.discountPct ?? 0) / 100);
+  const vat = settings.vatEnabled
+    ? afterDiscount * (settings.vatPercent / 100)
+    : 0;
+  return +(afterDiscount + vat + (order.tip ?? 0)).toFixed(2);
+}
+
+export function deductStockForLines(
+  stock: StockItem[],
+  menu: MenuItem[],
+  lines: { menuItemId: string; qty: number; voided?: boolean }[],
+): StockItem[] {
+  const usage = new Map<string, number>();
+  for (const line of lines) {
+    if (line.voided) continue;
+    const item = menu.find((m) => m.id === line.menuItemId);
+    const recipe = item?.recipe?.length
+      ? item.recipe
+      : item?.stockSkuId
+        ? [{ skuId: item.stockSkuId, qty: 0.25 }]
+        : [];
+    for (const r of recipe) {
+      usage.set(r.skuId, (usage.get(r.skuId) ?? 0) + r.qty * line.qty);
+    }
+  }
+  return stock.map((row) => {
+    const used = usage.get(row.id);
+    if (!used) return row;
+    return { ...row, qty: Math.max(0, +(row.qty - used).toFixed(2)) };
+  });
+}
+
+export function todaySale(orders: DemoOrder[], menu: MenuItem[] = seedMenuItems, settings: OpsSettings = { vatEnabled: false, vatPercent: 13 }) {
   return orders
     .filter((o) => o.status === "paid" || o.status === "served")
-    .reduce((s, o) => s + o.total + (o.tip ?? 0), 0);
+    .reduce((s, o) => s + orderPayableTotal(o, menu, settings), 0);
 }
 
 export function todayKharcha(expenses: Expense[], date = "2026-11-27") {
@@ -632,12 +748,24 @@ export function todayKharcha(expenses: Expense[], date = "2026-11-27") {
     .reduce((s, e) => s + e.amount, 0);
 }
 
-export function paySplit(orders: DemoOrder[]) {
+export function paySplit(
+  orders: DemoOrder[],
+  menu: MenuItem[] = seedMenuItems,
+  settings: OpsSettings = { vatEnabled: false, vatPercent: 13 },
+) {
   const split = { cash: 0, card: 0, upi: 0 };
   for (const o of orders) {
     if (o.status !== "paid" && o.status !== "served") continue;
+    if (o.splits?.length) {
+      for (const part of o.splits) {
+        if (!part.paid) continue;
+        const method = part.payMethod ?? o.payMethod ?? "cash";
+        split[method] += part.amount;
+      }
+      continue;
+    }
     const method = o.payMethod ?? "cash";
-    split[method] += o.total + (o.tip ?? 0);
+    split[method] += orderPayableTotal(o, menu, settings);
   }
   return split;
 }

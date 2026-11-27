@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { DemoQr } from "@/components/demo-qr";
 import { SiteNav } from "@/components/site-nav";
 import { Button } from "@/components/ui/button";
 import { useOps } from "@/lib/ops-store";
@@ -20,14 +21,35 @@ const tabs = [
 type TabId = (typeof tabs)[number]["id"];
 
 export default function DashboardPage() {
-  const { state, metrics, settleBill, closeDay, reopenDay, updateStaff } =
-    useOps();
+  const {
+    state,
+    metrics,
+    settleBill,
+    closeDay,
+    reopenDay,
+    updateStaff,
+    payableTotal,
+    applyDiscount,
+    voidOrder,
+    voidLine,
+    splitBill,
+    paySplitPart,
+  } = useOps();
   const [tab, setTab] = useState<TabId>("today");
+  const [expandedBill, setExpandedBill] = useState<string | null>(null);
+  const [voidReason, setVoidReason] = useState("Guest changed mind");
+  const [discountDraft, setDiscountDraft] = useState(10);
 
   const unpaid = useMemo(
     () =>
       state.orders.filter(
-        (o) => o.status === "ready" || o.status === "served" || o.status === "new" || o.status === "preparing",
+        (o) =>
+          o.status !== "paid" &&
+          o.status !== "cancelled" &&
+          (o.status === "ready" ||
+            o.status === "served" ||
+            o.status === "new" ||
+            o.status === "preparing"),
       ),
     [state.orders],
   );
@@ -64,6 +86,23 @@ export default function DashboardPage() {
                 Kitchen
               </Link>
             </div>
+          </div>
+
+          <div className="mt-4 flex flex-wrap gap-2">
+            {metrics.takeawayOpen > 0 ? (
+              <span className="rounded-md bg-amber-100 px-3 py-1 text-xs font-medium text-amber-950">
+                Takeaway / pickup queue · {metrics.takeawayOpen} open
+              </span>
+            ) : (
+              <span className="rounded-md bg-[var(--garden-fog)] px-3 py-1 text-xs font-medium text-[var(--garden-deep)]">
+                Takeaway queue clear
+              </span>
+            )}
+            {state.settings.vatEnabled ? (
+              <span className="rounded-md bg-white px-3 py-1 text-xs ring-1 ring-[var(--garden-leaf)]/15">
+                VAT {state.settings.vatPercent}% on
+              </span>
+            ) : null}
           </div>
 
           <div className="mt-6 grid gap-3 sm:grid-cols-3">
@@ -147,18 +186,32 @@ export default function DashboardPage() {
             </section>
             <section className="lg:col-span-2 rounded-xl border border-[var(--garden-leaf)]/12 bg-white/90 p-5">
               <h2 className="font-[family-name:var(--font-display)] text-2xl text-[var(--garden-deep)]">
-                Floor tables
+                Floor tables · guest QR
               </h2>
+              <p className="mt-1 text-sm opacity-65">
+                Print or share the QR / link — guests order without waiter login.
+              </p>
               <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
                 {state.tables.map((t) => (
                   <div
                     key={t.id}
                     className="rounded-lg border border-[var(--garden-leaf)]/15 px-3 py-3 text-sm"
                   >
-                    <p className="font-medium">{t.label}</p>
-                    <p className="mt-1 text-xs uppercase tracking-wide opacity-60">
-                      {t.status}
-                    </p>
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <p className="font-medium">{t.label}</p>
+                        <p className="mt-1 text-xs uppercase tracking-wide opacity-60">
+                          {t.status}
+                        </p>
+                      </div>
+                      <DemoQr seed={`table-${t.id}`} size={48} />
+                    </div>
+                    <Link
+                      href={`/table/${t.id}`}
+                      className="mt-2 inline-block text-xs text-[var(--garden-leaf)] underline"
+                    >
+                      /table/{t.id}
+                    </Link>
                   </div>
                 ))}
               </div>
@@ -170,47 +223,214 @@ export default function DashboardPage() {
           <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
             <section className="space-y-3">
               <h2 className="font-[family-name:var(--font-display)] text-2xl text-[var(--garden-deep)]">
-                Open bills
+                Open bills · split / void / discount
               </h2>
               {unpaid.length === 0 ? (
                 <p className="text-sm text-[var(--garden-ink)]/60">
                   No open tickets to settle.
                 </p>
               ) : (
-                unpaid.map((o) => (
-                  <div
-                    key={o.id}
-                    className="rounded-lg border border-[var(--garden-leaf)]/12 bg-white px-4 py-3"
-                  >
-                    <div className="flex flex-wrap items-start justify-between gap-2">
-                      <div>
-                        <p className="font-medium">
-                          {o.guest} · {o.table ?? "Takeaway"}
-                        </p>
-                        <p className="mt-1 text-sm text-[var(--garden-ink)]/65">
-                          {o.items.join(" · ")}
-                        </p>
-                        <p className="mt-2 font-semibold">{formatNpr(o.total)}</p>
+                unpaid.map((o) => {
+                  const due = payableTotal(o);
+                  const open = expandedBill === o.id;
+                  return (
+                    <div
+                      key={o.id}
+                      className="rounded-lg border border-[var(--garden-leaf)]/12 bg-white px-4 py-3"
+                    >
+                      <div className="flex flex-wrap items-start justify-between gap-2">
+                        <div>
+                          <p className="font-medium">
+                            {o.guest} · {o.table ?? "Takeaway"}
+                            {o.source === "guest" ? (
+                              <span className="ml-2 text-xs text-[var(--garden-leaf)]">
+                                QR guest
+                              </span>
+                            ) : null}
+                          </p>
+                          <p className="mt-1 text-sm text-[var(--garden-ink)]/65">
+                            {o.items.join(" · ") || "—"}
+                          </p>
+                          <p className="mt-2 font-semibold">
+                            {formatNpr(due)}
+                            {o.discountPct ? (
+                              <span className="ml-2 text-xs font-normal opacity-60">
+                                (−{o.discountPct}% disc
+                                {state.settings.vatEnabled
+                                  ? ` · VAT ${state.settings.vatPercent}%`
+                                  : ""}
+                                )
+                              </span>
+                            ) : state.settings.vatEnabled ? (
+                              <span className="ml-2 text-xs font-normal opacity-60">
+                                incl. VAT {state.settings.vatPercent}%
+                              </span>
+                            ) : null}
+                          </p>
+                        </div>
+                        <span className="rounded-md bg-[var(--garden-fog)] px-2 py-1 text-xs">
+                          {o.status}
+                        </span>
                       </div>
-                      <span className="rounded-md bg-[var(--garden-fog)] px-2 py-1 text-xs">
-                        {o.status}
-                      </span>
-                    </div>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {(["cash", "upi", "card"] as PayMethod[]).map((m) => (
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {(["cash", "upi", "card"] as PayMethod[]).map((m) => (
+                          <Button
+                            key={m}
+                            size="sm"
+                            variant={m === "upi" ? "soft" : "outline"}
+                            disabled={state.dayClose.closed || !!o.splits?.length}
+                            onClick={() => settleBill(o.id, m)}
+                          >
+                            {m === "upi" ? "UPI / QR" : m}
+                          </Button>
+                        ))}
                         <Button
-                          key={m}
                           size="sm"
-                          variant={m === "upi" ? "soft" : "outline"}
-                          disabled={state.dayClose.closed}
-                          onClick={() => settleBill(o.id, m)}
+                          variant="ghost"
+                          onClick={() =>
+                            setExpandedBill(open ? null : o.id)
+                          }
                         >
-                          {m === "upi" ? "UPI / QR" : m}
+                          {open ? "Hide tools" : "Split / void"}
                         </Button>
-                      ))}
+                      </div>
+                      {open && (
+                        <div className="mt-4 space-y-3 border-t border-[var(--garden-leaf)]/10 pt-3 text-sm">
+                          <div className="flex flex-wrap items-end gap-2">
+                            <label>
+                              Discount %
+                              <input
+                                type="number"
+                                className="ml-2 h-9 w-20 rounded-md border border-[var(--garden-leaf)]/20 px-2"
+                                value={discountDraft}
+                                onChange={(e) =>
+                                  setDiscountDraft(Number(e.target.value) || 0)
+                                }
+                              />
+                            </label>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() =>
+                                applyDiscount(o.id, discountDraft)
+                              }
+                            >
+                              Apply
+                            </Button>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() =>
+                                splitBill(o.id, "seats", [
+                                  { label: "Seat A", seats: 1 },
+                                  { label: "Seat B", seats: 1 },
+                                ])
+                              }
+                            >
+                              Split 2 seats
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                const half = +(due / 2).toFixed(2);
+                                splitBill(o.id, "amount", [
+                                  { label: "Part 1", amount: half },
+                                  { label: "Part 2", amount: +(due - half).toFixed(2) },
+                                ]);
+                              }}
+                            >
+                              Split 50/50 amount
+                            </Button>
+                          </div>
+                          {o.splits?.length ? (
+                            <ul className="space-y-2">
+                              {o.splits.map((sp) => (
+                                <li
+                                  key={sp.id}
+                                  className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-[var(--garden-sand)] px-3 py-2"
+                                >
+                                  <span>
+                                    {sp.label} · {formatNpr(sp.amount)}
+                                    {sp.paid ? " · paid" : ""}
+                                  </span>
+                                  {!sp.paid ? (
+                                    <div className="flex gap-1">
+                                      {(["cash", "upi", "card"] as PayMethod[]).map(
+                                        (m) => (
+                                          <Button
+                                            key={m}
+                                            size="sm"
+                                            variant="outline"
+                                            onClick={() =>
+                                              paySplitPart(o.id, sp.id, m)
+                                            }
+                                          >
+                                            {m}
+                                          </Button>
+                                        ),
+                                      )}
+                                    </div>
+                                  ) : null}
+                                </li>
+                              ))}
+                            </ul>
+                          ) : null}
+                          {(o.lines ?? []).length > 0 && (
+                            <ul className="space-y-1">
+                              {(o.lines ?? []).map((line, idx) => (
+                                <li
+                                  key={`${line.menuItemId}-${idx}`}
+                                  className="flex items-center justify-between gap-2"
+                                >
+                                  <span
+                                    className={cn(
+                                      line.voided && "line-through opacity-50",
+                                    )}
+                                  >
+                                    {line.name} ×{line.qty}
+                                  </span>
+                                  {!line.voided ? (
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      onClick={() =>
+                                        voidLine(o.id, idx, voidReason)
+                                      }
+                                    >
+                                      Void line
+                                    </Button>
+                                  ) : (
+                                    <span className="text-xs opacity-50">
+                                      {line.voidReason}
+                                    </span>
+                                  )}
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                          <div className="flex flex-wrap items-end gap-2">
+                            <input
+                              className="h-9 flex-1 rounded-md border border-[var(--garden-leaf)]/20 px-2"
+                              value={voidReason}
+                              onChange={(e) => setVoidReason(e.target.value)}
+                              placeholder="Void reason"
+                            />
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => voidOrder(o.id, voidReason)}
+                            >
+                              Void order
+                            </Button>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </section>
             <section className="h-fit rounded-xl border border-[var(--garden-leaf)]/12 bg-[var(--garden-deep)] p-5 text-[var(--garden-mist)]">
