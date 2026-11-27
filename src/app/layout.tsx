@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Fraunces, Outfit } from "next/font/google";
 import { Providers } from "@/components/providers";
 import "./globals.css";
@@ -16,11 +16,24 @@ const body = Outfit({
 
 export const metadata: Metadata = {
   title: {
-    default: "Garden Restaurant · Lazimpat, Kathmandu",
+    default: "Garden Restaurant · Lazimpat",
     template: "%s · Garden Restaurant",
   },
   description:
-    "Garden Restaurant — simple cafe app for Lazimpat. Order coffee and plates, staff desk for kitchen and pay (NPR demo).",
+    "Garden Restaurant phone app — order coffee & plates, staff kitchen + pay. Lazimpat demo.",
+  appleWebApp: {
+    capable: true,
+    title: "Garden",
+    statusBarStyle: "black-translucent",
+  },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  viewportFit: "cover",
+  themeColor: "#0f2e1f",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -29,7 +42,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="en"
       className={`${display.variable} ${body.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col font-[family-name:var(--font-body)]">
+      <body className="min-h-full flex flex-col bg-[var(--garden-deep)] font-[family-name:var(--font-body)]">
         <Providers>{children}</Providers>
       </body>
     </html>

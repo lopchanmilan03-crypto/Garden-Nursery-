@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { Button } from "@/components/ui/button";
-import { menuCategories, restaurant, type PayMethod } from "@/lib/demo-data";
+import { PhoneNav, PhoneShell } from "@/components/phone-nav";
+import { menuCategories, type PayMethod } from "@/lib/demo-data";
 import { useOps } from "@/lib/ops-store";
 import { cn, formatNpr } from "@/lib/utils";
 
@@ -114,102 +114,120 @@ export function OrderClient() {
 
   if (!ready) {
     return (
-      <main className="flex min-h-[100svh] items-center justify-center bg-[var(--garden-sand)] text-sm text-[var(--garden-ink)]/60">
-        Loading menu…
-      </main>
+      <PhoneShell footer={<PhoneNav />}>
+        <p className="flex flex-1 items-center justify-center text-sm opacity-60">
+          Loading…
+        </p>
+      </PhoneShell>
     );
   }
 
+  const showCartBar = step === "menu";
+
   return (
-    <main className="min-h-[100svh] bg-[var(--garden-sand)]">
-      <header className="sticky top-0 z-20 border-b border-[var(--garden-leaf)]/10 bg-[var(--garden-paper)]/95 px-4 py-3 backdrop-blur md:px-8">
-        <div className="mx-auto flex max-w-lg items-center justify-between gap-3">
-          <Link href="/" className="text-sm text-[var(--garden-leaf)]">
-            ← Home
-          </Link>
-          <div className="text-center">
-            <p className="font-[family-name:var(--font-display)] text-lg text-[var(--garden-deep)]">
-              Order
-            </p>
-            <p className="text-[10px] uppercase tracking-[0.2em] text-[var(--garden-leaf)]">
-              {restaurant.name}
-            </p>
+    <PhoneShell
+      footer={
+        showCartBar ? (
+          <div className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--garden-leaf)]/12 bg-[var(--garden-paper)]/97 pb-[env(safe-area-inset-bottom)] backdrop-blur-md">
+            <div className="mx-auto flex max-w-md items-center gap-3 px-4 py-3">
+              <div className="min-w-0 flex-1">
+                <p className="text-xs text-[var(--garden-ink)]/50">
+                  {itemCount} items · {seatLabel}
+                </p>
+                <p className="font-[family-name:var(--font-display)] text-2xl text-[var(--garden-deep)]">
+                  {formatNpr(subtotal)}
+                </p>
+              </div>
+              <button
+                type="button"
+                disabled={!itemCount}
+                onClick={sendOrder}
+                className="flex h-14 min-w-[8.5rem] items-center justify-center rounded-2xl bg-[var(--garden-deep)] px-5 text-base font-semibold text-white disabled:opacity-40"
+              >
+                Send
+              </button>
+            </div>
           </div>
-          <span className="w-12 text-right text-xs text-[var(--garden-ink)]/45">
-            {step === "seat" ? "1/2" : step === "menu" ? "2/2" : "✓"}
-          </span>
+        ) : (
+          <PhoneNav />
+        )
+      }
+    >
+      <header className="sticky top-0 z-20 border-b border-[var(--garden-leaf)]/10 bg-[var(--garden-paper)]/95 px-4 py-3 backdrop-blur">
+        <div className="flex items-center justify-between">
+          <p className="font-[family-name:var(--font-display)] text-xl text-[var(--garden-deep)]">
+            Order
+          </p>
+          <p className="text-xs font-medium text-[var(--garden-leaf)]">
+            {step === "seat" ? "Seat" : step === "menu" ? "Menu" : "Done"}
+          </p>
         </div>
       </header>
 
-      <div className="mx-auto max-w-lg px-4 pb-28 pt-5 md:px-8">
+      <div className={cn("px-4 pt-4", showCartBar ? "pb-28" : "pb-24")}>
         {step === "seat" && (
           <section>
-            <h1 className="font-[family-name:var(--font-display)] text-3xl text-[var(--garden-deep)]">
-              Where are you?
+            <h1 className="font-[family-name:var(--font-display)] text-[1.75rem] text-[var(--garden-deep)]">
+              Your seat
             </h1>
-            <p className="mt-2 text-sm text-[var(--garden-ink)]/65">
-              Pick a table or walk-in.
-            </p>
-            <div className="mt-6 grid gap-3">
-              <button
-                type="button"
-                onClick={() => setTableId("walk-in")}
-                className={cn(
-                  "min-h-14 rounded-2xl px-5 text-left text-base font-medium transition",
-                  tableId === "walk-in"
-                    ? "bg-[var(--garden-deep)] text-white"
-                    : "bg-white text-[var(--garden-deep)] ring-1 ring-[var(--garden-leaf)]/15",
-                )}
-              >
-                Walk-in / counter
-              </button>
-              {state.tables.map((t) => (
-                <button
-                  key={t.id}
-                  type="button"
-                  onClick={() => setTableId(t.id)}
-                  className={cn(
-                    "min-h-14 rounded-2xl px-5 text-left text-base font-medium transition",
-                    tableId === t.id
-                      ? "bg-[var(--garden-deep)] text-white"
-                      : "bg-white text-[var(--garden-deep)] ring-1 ring-[var(--garden-leaf)]/15",
-                  )}
-                >
-                  {t.label}
-                </button>
-              ))}
-            </div>
-            <Button
-              size="lg"
-              className="mt-8 h-14 w-full rounded-2xl text-base"
-              onClick={() => setStep("menu")}
+            <button
+              type="button"
+              onClick={() => setTableId("walk-in")}
+              className={cn(
+                "mt-4 flex min-h-14 w-full items-center rounded-2xl px-4 text-left text-base font-semibold",
+                tableId === "walk-in"
+                  ? "bg-[var(--garden-deep)] text-white"
+                  : "bg-white text-[var(--garden-deep)] ring-1 ring-[var(--garden-leaf)]/12",
+              )}
             >
-              Continue to menu
-            </Button>
+              Walk-in
+            </button>
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              {state.tables.map((t) => {
+                const short = t.label.split(" · ")[0];
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => setTableId(t.id)}
+                    className={cn(
+                      "flex min-h-14 items-center justify-center rounded-2xl px-3 text-base font-semibold",
+                      tableId === t.id
+                        ? "bg-[var(--garden-deep)] text-white"
+                        : "bg-white text-[var(--garden-deep)] ring-1 ring-[var(--garden-leaf)]/12",
+                    )}
+                  >
+                    {short}
+                  </button>
+                );
+              })}
+            </div>
+            <button
+              type="button"
+              onClick={() => setStep("menu")}
+              className="mt-6 flex min-h-14 w-full items-center justify-center rounded-2xl bg-[var(--garden-gold)] text-base font-semibold text-[var(--garden-deep)]"
+            >
+              Next · Menu
+            </button>
           </section>
         )}
 
         {step === "menu" && (
           <section>
-            <div className="mb-4 flex items-center justify-between gap-3">
-              <div>
-                <h1 className="font-[family-name:var(--font-display)] text-3xl text-[var(--garden-deep)]">
-                  Menu
-                </h1>
-                <p className="mt-1 text-sm text-[var(--garden-ink)]/65">
-                  {seatLabel}
-                </p>
-              </div>
+            <div className="mb-3 flex items-center justify-between">
+              <h1 className="font-[family-name:var(--font-display)] text-[1.75rem] text-[var(--garden-deep)]">
+                Menu
+              </h1>
               <button
                 type="button"
                 onClick={() => setStep("seat")}
-                className="text-sm text-[var(--garden-leaf)] underline-offset-2 hover:underline"
+                className="min-h-10 rounded-xl px-3 text-sm font-medium text-[var(--garden-leaf)]"
               >
-                Change seat
+                {seatLabel} ✎
               </button>
             </div>
 
-            <div className="flex flex-wrap gap-2">
+            <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
               <Chip
                 active={category === "all"}
                 onClick={() => setCategory("all")}
@@ -225,42 +243,41 @@ export function OrderClient() {
               ))}
             </div>
 
-            <ul className="mt-5 space-y-3">
+            <ul className="mt-3 space-y-2">
               {filtered.map((item) => {
                 const qty = cart[item.id] ?? 0;
                 return (
                   <li
                     key={item.id}
-                    className="flex items-center justify-between gap-3 rounded-2xl bg-white px-4 py-4 ring-1 ring-[var(--garden-leaf)]/12"
+                    className="flex items-center gap-3 rounded-2xl bg-white px-3 py-3 ring-1 ring-[var(--garden-leaf)]/10"
                   >
                     <div className="min-w-0 flex-1">
-                      <p className="font-medium text-[var(--garden-deep)]">
+                      <p className="truncate font-medium text-[var(--garden-deep)]">
                         {item.name}
                       </p>
-                      <p className="mt-1 text-sm font-semibold text-[var(--garden-leaf)]">
+                      <p className="mt-0.5 text-sm font-semibold text-[var(--garden-leaf)]">
                         {formatNpr(item.price)}
                       </p>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className="h-11 w-11 rounded-xl"
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
                         disabled={!qty}
                         onClick={() => bump(item.id, -1)}
+                        className="flex h-12 w-12 items-center justify-center rounded-xl bg-[var(--garden-fog)] text-xl font-medium disabled:opacity-30"
                       >
                         −
-                      </Button>
-                      <span className="w-7 text-center tabular-nums text-base font-medium">
+                      </button>
+                      <span className="w-6 text-center tabular-nums text-base font-semibold">
                         {qty}
                       </span>
-                      <Button
-                        size="icon"
-                        className="h-11 w-11 rounded-xl"
+                      <button
+                        type="button"
                         onClick={() => bump(item.id, 1)}
+                        className="flex h-12 w-12 items-center justify-center rounded-xl bg-[var(--garden-deep)] text-xl font-medium text-white"
                       >
                         +
-                      </Button>
+                      </button>
                     </div>
                   </li>
                 );
@@ -270,28 +287,25 @@ export function OrderClient() {
         )}
 
         {step === "done" && (
-          <section className="text-center">
-            <p className="text-xs uppercase tracking-[0.22em] text-[var(--garden-leaf)]">
-              Sent
-            </p>
-            <h1 className="mt-3 font-[family-name:var(--font-display)] text-3xl text-[var(--garden-deep)]">
-              Kitchen has it
+          <section>
+            <h1 className="font-[family-name:var(--font-display)] text-[1.75rem] text-[var(--garden-deep)]">
+              Sent to kitchen
             </h1>
-            <p className="mt-2 text-sm text-[var(--garden-ink)]/65">
-              Order <strong>{orderId}</strong> · {seatLabel}
+            <p className="mt-1 text-sm text-[var(--garden-ink)]/60">
+              {orderId} · {seatLabel}
             </p>
 
             {!paid ? (
-              <div className="mt-8 rounded-2xl bg-white p-5 text-left ring-1 ring-[var(--garden-leaf)]/12">
-                <p className="font-medium text-[var(--garden-deep)]">Pay now</p>
-                <div className="mt-3 grid grid-cols-3 gap-2">
+              <div className="mt-5 space-y-3 rounded-2xl bg-white p-4 ring-1 ring-[var(--garden-leaf)]/10">
+                <p className="font-semibold text-[var(--garden-deep)]">Pay</p>
+                <div className="grid grid-cols-3 gap-2">
                   {(["cash", "upi", "card"] as PayMethod[]).map((m) => (
                     <button
                       key={m}
                       type="button"
                       onClick={() => setPayMethod(m)}
                       className={cn(
-                        "min-h-12 rounded-xl text-sm font-medium capitalize",
+                        "min-h-12 rounded-xl text-sm font-semibold capitalize",
                         payMethod === m
                           ? "bg-[var(--garden-deep)] text-white"
                           : "bg-[var(--garden-fog)] text-[var(--garden-deep)]",
@@ -301,65 +315,37 @@ export function OrderClient() {
                     </button>
                   ))}
                 </div>
-                <Button
-                  size="lg"
-                  className="mt-4 h-14 w-full rounded-2xl"
+                <button
+                  type="button"
                   onClick={payNow}
+                  className="flex min-h-14 w-full items-center justify-center rounded-2xl bg-[var(--garden-gold)] text-base font-semibold text-[var(--garden-deep)]"
                 >
                   Pay {formatNpr(orderTotal)}
-                </Button>
-                <p className="mt-3 text-center text-xs text-[var(--garden-ink)]/50">
-                  Or pay later at the counter.
-                </p>
+                </button>
+                <Link
+                  href="/staff"
+                  className="block py-1 text-center text-sm text-[var(--garden-leaf)]"
+                >
+                  Pay later at Staff
+                </Link>
               </div>
             ) : (
-              <p className="mt-8 rounded-2xl bg-emerald-50 px-4 py-5 text-sm text-emerald-950 ring-1 ring-emerald-200">
-                Paid · thank you. Enjoy the patio.
+              <p className="mt-5 rounded-2xl bg-emerald-50 px-4 py-5 text-center text-sm text-emerald-950 ring-1 ring-emerald-200">
+                Paid · enjoy the patio
               </p>
             )}
 
-            <div className="mt-8 grid gap-3">
-              <Button
-                size="lg"
-                className="h-14 w-full rounded-2xl"
-                onClick={reset}
-              >
-                Order again
-              </Button>
-              <Link
-                href="/"
-                className="flex min-h-12 items-center justify-center text-sm text-[var(--garden-leaf)]"
-              >
-                Home
-              </Link>
-            </div>
+            <button
+              type="button"
+              onClick={reset}
+              className="mt-4 flex min-h-14 w-full items-center justify-center rounded-2xl bg-[var(--garden-deep)] text-base font-semibold text-white"
+            >
+              New order
+            </button>
           </section>
         )}
       </div>
-
-      {step === "menu" ? (
-        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-[var(--garden-leaf)]/10 bg-[var(--garden-paper)]/95 px-4 py-3 backdrop-blur md:px-8">
-          <div className="mx-auto flex max-w-lg items-center gap-3">
-            <div className="min-w-0 flex-1">
-              <p className="text-xs text-[var(--garden-ink)]/55">
-                {itemCount} items
-              </p>
-              <p className="font-[family-name:var(--font-display)] text-xl text-[var(--garden-deep)]">
-                {formatNpr(subtotal)}
-              </p>
-            </div>
-            <Button
-              size="lg"
-              className="h-14 min-w-[9.5rem] rounded-2xl px-6 text-base"
-              disabled={!itemCount}
-              onClick={sendOrder}
-            >
-              Send
-            </Button>
-          </div>
-        </div>
-      ) : null}
-    </main>
+    </PhoneShell>
   );
 }
 
@@ -377,10 +363,10 @@ function Chip({
       type="button"
       onClick={onClick}
       className={cn(
-        "rounded-full px-3.5 py-2 text-sm transition",
+        "shrink-0 rounded-full px-4 py-2.5 text-sm font-medium",
         active
           ? "bg-[var(--garden-deep)] text-white"
-          : "bg-white text-[var(--garden-deep)] ring-1 ring-[var(--garden-leaf)]/15",
+          : "bg-white text-[var(--garden-deep)] ring-1 ring-[var(--garden-leaf)]/12",
       )}
     >
       {label}
