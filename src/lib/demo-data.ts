@@ -231,10 +231,10 @@ export const marketingGallery: GalleryImage[] = [
 ];
 
 export const marketingHeroImage =
-  "https://images.unsplash.com/photo-1466978913421-dad2ebd01d17?auto=format&fit=crop&w=1800&q=80";
+  "https://images.unsplash.com/photo-1416879595882-3373a0480b5b?auto=format&fit=crop&w=1800&q=80";
 
 export const marketingAboutImage =
-  "https://images.unsplash.com/photo-1416879595882-3373a0480b5b?auto=format&fit=crop&w=1400&q=80";
+  "https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=1400&q=80";
 
 export const testimonials: Testimonial[] = [
   {
