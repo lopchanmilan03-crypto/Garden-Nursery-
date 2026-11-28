@@ -1,6 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import {
+  useEffect,
+  useState,
+  type InputHTMLAttributes,
+} from "react";
 import type { MenuCategory } from "@/lib/demo-data";
 import { useOps } from "@/lib/ops-store";
 import { cn, formatNpr } from "@/lib/utils";
@@ -10,7 +14,73 @@ const SCENARIO_QTY = [10, 50, 100] as const;
 const fieldClass =
   "h-10 w-full rounded-xl border border-[var(--garden-leaf)]/15 bg-white px-2 text-sm font-semibold text-[var(--garden-deep)]";
 
-/** Owner-only Cost / Targets — editable packs, overhead, sell prices. */
+/**
+ * Number field that allows empty while typing; empty → 0 on blur.
+ * Fixes NPR inputs stuck at 0 when backspacing.
+ */
+function SoftNumberInput({
+  value,
+  onCommit,
+  className,
+  ...rest
+}: {
+  value: number;
+  onCommit: (n: number) => void;
+  className?: string;
+} & Omit<
+  InputHTMLAttributes<HTMLInputElement>,
+  "value" | "onChange" | "type" | "onCommit"
+>) {
+  const [focused, setFocused] = useState(false);
+  const [text, setText] = useState(String(value));
+
+  useEffect(() => {
+    if (!focused) setText(String(value));
+  }, [value, focused]);
+
+  return (
+    <input
+      {...rest}
+      inputMode="decimal"
+      className={className}
+      value={focused ? text : String(value)}
+      onFocus={(e) => {
+        setFocused(true);
+        setText(String(value));
+        rest.onFocus?.(e);
+      }}
+      onChange={(e) => {
+        const v = e.target.value;
+        if (v === "" || v === "-" || /^-?\d*\.?\d*$/.test(v)) {
+          setText(v);
+          if (v !== "" && v !== "-" && v !== "." && v !== "-.") {
+            onCommit(Number(v));
+          }
+        }
+      }}
+      onBlur={(e) => {
+        setFocused(false);
+        if (text === "" || text === "-" || text === "." || text === "-.") {
+          onCommit(0);
+          setText("0");
+        } else {
+          const n = Number(text);
+          onCommit(Number.isFinite(n) ? n : 0);
+        }
+        rest.onBlur?.(e);
+      }}
+    />
+  );
+}
+
+function servingsLabel(yieldLabel: string): string {
+  const unit = yieldLabel.trim() || "serving";
+  const plural =
+    unit.endsWith("s") || unit.endsWith("S") ? unit : `${unit}s`;
+  return `${plural} from 1 pack`;
+}
+
+/** Owner-only Cost / Targets — editable packs, attach ingredients per dish. */
 export function CostTargetsPanel() {
   const {
     state,
@@ -21,23 +91,22 @@ export function CostTargetsPanel() {
     updateDishCostRecipe,
     updateMenuItem,
     addMenuItem,
+    addIngredientPack,
     removeMenuItem,
   } = useOps();
   const [openId, setOpenId] = useState<string | null>("chiya");
   const [targetDraft, setTargetDraft] = useState(
     String(state.costTargets.monthlySalesTarget),
   );
-  const [newDish, setNewDish] = useState({
+  const [newDish, setNewDish] = useState({ name: "", price: "" });
+  const [newPack, setNewPack] = useState({
     name: "",
-    price: "",
     packCost: "",
     yieldQty: "10",
+    packLabel: "pack",
+    yieldLabel: "portion",
   });
-
-  const tea = useMemo(
-    () => metrics.dishCosts.find((d) => d.menuItemId === "chiya"),
-    [metrics.dishCosts],
-  );
+  const [attachFor, setAttachFor] = useState<Record<string, string>>({});
 
   const target = metrics.monthlyTarget;
   const oh = metrics.overhead;
@@ -46,30 +115,71 @@ export function CostTargetsPanel() {
 
   function saveTarget() {
     const n = Number(targetDraft.replace(/,/g, ""));
-    if (!n || n < 0) return;
+    if (!Number.isFinite(n) || n < 0) return;
     updateCostTargets({ monthlySalesTarget: n });
   }
 
   function addFoodItem() {
     const name = newDish.name.trim();
     const price = Number(newDish.price);
-    if (!name || !price) return;
+    if (!name || !Number.isFinite(price) || price < 0) return;
     const id = `dish-${Date.now()}`;
-    const packCost = Number(newDish.packCost) || Math.round(price * 0.35);
-    const yieldQty = Number(newDish.yieldQty) || 10;
     addMenuItem(
       {
         id,
         name,
         description: "Owner-added dish",
         price,
-        cost: +(packCost / yieldQty).toFixed(2),
         category: "mains" as MenuCategory,
       },
-      { packCost, yieldQty },
+      { createPack: false },
     );
-    setNewDish({ name: "", price: "", packCost: "", yieldQty: "10" });
+    setNewDish({ name: "", price: "" });
     setOpenId(id);
+  }
+
+  function addSharedPack() {
+    const name = newPack.name.trim();
+    if (!name) return;
+    const id = `pack-${Date.now()}`;
+    addIngredientPack({
+      id,
+      name,
+      packCost: Number(newPack.packCost) || 0,
+      packLabel: newPack.packLabel.trim() || "pack",
+      yieldQty: Number(newPack.yieldQty) || 1,
+      yieldLabel: newPack.yieldLabel.trim() || "portion",
+    });
+    setNewPack({
+      name: "",
+      packCost: "",
+      yieldQty: "10",
+      packLabel: "pack",
+      yieldLabel: "portion",
+    });
+  }
+
+  function attachIngredient(menuItemId: string, packId: string) {
+    if (!packId) return;
+    const recipe = state.dishCostRecipes.find(
+      (r) => r.menuItemId === menuItemId,
+    );
+    const ingredients = recipe?.ingredients ?? [];
+    if (ingredients.some((i) => i.packId === packId)) return;
+    updateDishCostRecipe(menuItemId, {
+      ingredients: [...ingredients, { packId, unitsPerDish: 1 }],
+    });
+    setAttachFor((prev) => ({ ...prev, [menuItemId]: "" }));
+  }
+
+  function removeIngredient(menuItemId: string, packId: string) {
+    const recipe = state.dishCostRecipes.find(
+      (r) => r.menuItemId === menuItemId,
+    );
+    if (!recipe) return;
+    updateDishCostRecipe(menuItemId, {
+      ingredients: recipe.ingredients.filter((i) => i.packId !== packId),
+    });
   }
 
   return (
@@ -79,7 +189,7 @@ export function CostTargetsPanel() {
           Cost / Targets
         </h2>
         <p className="mt-1 text-sm text-[var(--garden-ink)]/55">
-          Edit market prices — true cost & profit update live · NPR ·{" "}
+          Shared packs · attach ingredients per dish · NPR ·{" "}
           {target.monthLabel}
         </p>
       </div>
@@ -130,7 +240,6 @@ export function CostTargetsPanel() {
         </div>
         <div className="mt-3 flex gap-2">
           <input
-            type="number"
             inputMode="numeric"
             className="min-h-11 flex-1 rounded-xl border-0 bg-white/10 px-3 text-sm text-white placeholder:text-white/40"
             value={targetDraft}
@@ -147,33 +256,6 @@ export function CostTargetsPanel() {
         </div>
       </section>
 
-      {tea ? (
-        <section className="rounded-2xl bg-white p-4 ring-1 ring-emerald-200/80">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--garden-leaf)]">
-            Tea example
-          </p>
-          <p className="mt-1 font-[family-name:var(--font-display)] text-xl text-[var(--garden-deep)]">
-            {tea.name}
-          </p>
-          <p className="mt-1 text-sm text-[var(--garden-ink)]/60">
-            Edit packs below — milk pack cost & yield drive this live.
-          </p>
-          <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
-            <MiniStat label="Sell" value={formatNpr(tea.sellPrice)} />
-            <MiniStat
-              label="Ingredients"
-              value={formatNpr(tea.ingredientCost)}
-            />
-            <MiniStat label="True cost" value={formatNpr(tea.trueCost)} />
-            <MiniStat
-              label="Profit / cup"
-              value={formatNpr(tea.profitPerUnit)}
-              strong
-            />
-          </div>
-        </section>
-      ) : null}
-
       <section className="rounded-2xl bg-white p-4 ring-1 ring-[var(--garden-leaf)]/10">
         <p className="font-semibold text-[var(--garden-deep)]">
           Monthly overhead
@@ -187,7 +269,6 @@ export function CostTargetsPanel() {
             if (row.kind === "salary") {
               const count = row.staffCount ?? 0;
               const pay = row.payPerStaff ?? 0;
-              const total = count * pay;
               return (
                 <li key={row.id} className="space-y-2">
                   <p className="text-sm font-medium text-[var(--garden-deep)]">
@@ -196,35 +277,31 @@ export function CostTargetsPanel() {
                   <div className="grid grid-cols-2 gap-2">
                     <label className="text-[11px] text-[var(--garden-ink)]/50">
                       Staff count
-                      <input
-                        type="number"
-                        min={0}
+                      <SoftNumberInput
                         className={cn(fieldClass, "mt-1")}
                         value={count}
-                        onChange={(e) =>
+                        onCommit={(n) =>
                           updateMonthlyOverhead(row.id, {
-                            staffCount: Number(e.target.value) || 0,
+                            staffCount: Math.max(0, Math.round(n)),
                           })
                         }
                       />
                     </label>
                     <label className="text-[11px] text-[var(--garden-ink)]/50">
                       Pay / staff
-                      <input
-                        type="number"
-                        min={0}
+                      <SoftNumberInput
                         className={cn(fieldClass, "mt-1")}
                         value={pay}
-                        onChange={(e) =>
+                        onCommit={(n) =>
                           updateMonthlyOverhead(row.id, {
-                            payPerStaff: Number(e.target.value) || 0,
+                            payPerStaff: Math.max(0, n),
                           })
                         }
                       />
                     </label>
                   </div>
                   <p className="text-right text-sm font-semibold tabular-nums">
-                    = {formatNpr(total)} / mo
+                    = {formatNpr(count * pay)} / mo
                   </p>
                 </li>
               );
@@ -237,13 +314,12 @@ export function CostTargetsPanel() {
                 className="flex items-center justify-between gap-2 text-sm"
               >
                 <span className="min-w-0 truncate">{rentLabel}</span>
-                <input
-                  type="number"
+                <SoftNumberInput
                   className="h-10 w-24 rounded-xl border border-[var(--garden-leaf)]/15 px-2 text-right text-sm font-semibold"
                   value={row.monthlyAmount}
-                  onChange={(e) =>
+                  onCommit={(n) =>
                     updateMonthlyOverhead(row.id, {
-                      monthlyAmount: Number(e.target.value) || 0,
+                      monthlyAmount: Math.max(0, n),
                     })
                   }
                   aria-label={`${rentLabel} monthly NPR`}
@@ -254,13 +330,12 @@ export function CostTargetsPanel() {
         </ul>
         <label className="mt-3 block text-[11px] text-[var(--garden-ink)]/50">
           Monthly dish volume (for overhead / unit)
-          <input
-            type="number"
+          <SoftNumberInput
             className={cn(fieldClass, "mt-1")}
             value={state.costTargets.monthlyUnitVolume}
-            onChange={(e) =>
+            onCommit={(n) =>
               updateCostTargets({
-                monthlyUnitVolume: Number(e.target.value) || 1,
+                monthlyUnitVolume: Math.max(1, Math.round(n) || 1),
               })
             }
           />
@@ -272,7 +347,7 @@ export function CostTargetsPanel() {
           Ingredient packs
         </p>
         <p className="mt-1 text-xs text-[var(--garden-ink)]/50">
-          Edit pack cost & yield — cost/unit recalculates
+          Shared list — attach packs to dishes below
         </p>
         <ul className="mt-3 space-y-3">
           {state.ingredientPacks.map((pack) => {
@@ -286,7 +361,7 @@ export function CostTargetsPanel() {
                 className="rounded-xl bg-[var(--garden-fog)]/60 p-3"
               >
                 <input
-                  className={cn(fieldClass, "bg-[var(--garden-fog)]")}
+                  className={cn(fieldClass, "bg-white")}
                   value={pack.name}
                   onChange={(e) =>
                     updateIngredientPack(pack.id, { name: e.target.value })
@@ -296,26 +371,24 @@ export function CostTargetsPanel() {
                 <div className="mt-2 grid grid-cols-3 gap-2">
                   <label className="text-[10px] text-[var(--garden-ink)]/45">
                     NPR / {pack.packLabel}
-                    <input
-                      type="number"
+                    <SoftNumberInput
                       className={cn(fieldClass, "mt-1")}
                       value={pack.packCost}
-                      onChange={(e) =>
+                      onCommit={(n) =>
                         updateIngredientPack(pack.id, {
-                          packCost: Number(e.target.value) || 0,
+                          packCost: Math.max(0, n),
                         })
                       }
                     />
                   </label>
                   <label className="text-[10px] text-[var(--garden-ink)]/45">
-                    Yield
-                    <input
-                      type="number"
+                    {servingsLabel(pack.yieldLabel)}
+                    <SoftNumberInput
                       className={cn(fieldClass, "mt-1")}
                       value={pack.yieldQty}
-                      onChange={(e) =>
+                      onCommit={(n) =>
                         updateIngredientPack(pack.id, {
-                          yieldQty: Number(e.target.value) || 0,
+                          yieldQty: Math.max(0, n),
                         })
                       }
                     />
@@ -340,6 +413,46 @@ export function CostTargetsPanel() {
             );
           })}
         </ul>
+        <div className="mt-4 space-y-2 border-t border-[var(--garden-leaf)]/10 pt-3">
+          <p className="text-xs font-semibold text-[var(--garden-deep)]">
+            Add pack to shared list
+          </p>
+          <input
+            className={fieldClass}
+            placeholder="Pack name (e.g. Milk)"
+            value={newPack.name}
+            onChange={(e) =>
+              setNewPack((p) => ({ ...p, name: e.target.value }))
+            }
+          />
+          <div className="grid grid-cols-2 gap-2">
+            <input
+              className={fieldClass}
+              inputMode="decimal"
+              placeholder="Pack NPR"
+              value={newPack.packCost}
+              onChange={(e) =>
+                setNewPack((p) => ({ ...p, packCost: e.target.value }))
+              }
+            />
+            <input
+              className={fieldClass}
+              inputMode="decimal"
+              placeholder="Servings from 1 pack"
+              value={newPack.yieldQty}
+              onChange={(e) =>
+                setNewPack((p) => ({ ...p, yieldQty: e.target.value }))
+              }
+            />
+          </div>
+          <button
+            type="button"
+            onClick={addSharedPack}
+            className="flex min-h-11 w-full items-center justify-center rounded-xl bg-[var(--garden-fog)] text-sm font-semibold"
+          >
+            Add pack
+          </button>
+        </div>
       </section>
 
       <section className="rounded-2xl bg-white p-4 ring-1 ring-[var(--garden-leaf)]/10">
@@ -347,7 +460,7 @@ export function CostTargetsPanel() {
           Add food item
         </p>
         <p className="mt-1 text-xs text-[var(--garden-ink)]/50">
-          Creates a linked ingredient pack + recipe
+          Starts empty — attach ingredients on the dish card
         </p>
         <div className="mt-3 grid grid-cols-2 gap-2">
           <input
@@ -359,30 +472,12 @@ export function CostTargetsPanel() {
             }
           />
           <input
-            type="number"
-            className={fieldClass}
+            className={cn(fieldClass, "col-span-2")}
+            inputMode="decimal"
             placeholder="Sell NPR"
             value={newDish.price}
             onChange={(e) =>
               setNewDish((d) => ({ ...d, price: e.target.value }))
-            }
-          />
-          <input
-            type="number"
-            className={fieldClass}
-            placeholder="Pack cost NPR"
-            value={newDish.packCost}
-            onChange={(e) =>
-              setNewDish((d) => ({ ...d, packCost: e.target.value }))
-            }
-          />
-          <input
-            type="number"
-            className={cn(fieldClass, "col-span-2")}
-            placeholder="Yield portions"
-            value={newDish.yieldQty}
-            onChange={(e) =>
-              setNewDish((d) => ({ ...d, yieldQty: e.target.value }))
             }
           />
         </div>
@@ -391,12 +486,12 @@ export function CostTargetsPanel() {
           onClick={addFoodItem}
           className="mt-3 flex min-h-12 w-full items-center justify-center rounded-2xl bg-[var(--garden-deep)] text-sm font-semibold text-white"
         >
-          Add dish + pack
+          Add dish
         </button>
       </section>
 
       <p className="pt-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--garden-leaf)]">
-        Per dish
+        Per dish · tap to expand
       </p>
 
       {metrics.dishCosts.map((dish) => {
@@ -404,6 +499,15 @@ export function CostTargetsPanel() {
         const recipe = state.dishCostRecipes.find(
           (r) => r.menuItemId === dish.menuItemId,
         );
+        const attachedIds = new Set(
+          recipe?.ingredients.map((i) => i.packId) ?? [],
+        );
+        const availablePacks = state.ingredientPacks.filter(
+          (p) => !attachedIds.has(p.id),
+        );
+        const profitLabel =
+          dish.lines[0]?.yieldLabel === "cup" ? "Profit / cup" : "Profit / unit";
+
         return (
           <article
             key={dish.menuItemId}
@@ -416,111 +520,170 @@ export function CostTargetsPanel() {
           >
             <button
               type="button"
-              className="flex w-full items-start justify-between gap-2 px-4 py-4 text-left"
+              className="w-full px-4 py-4 text-left"
               onClick={() => setOpenId(open ? null : dish.menuItemId)}
             >
-              <div className="min-w-0">
-                <p className="font-[family-name:var(--font-display)] text-lg text-[var(--garden-deep)]">
-                  {dish.name}
-                </p>
-                <p className="mt-0.5 text-xs text-[var(--garden-ink)]/50">
-                  Sell {formatNpr(dish.sellPrice)} · true{" "}
-                  {formatNpr(dish.trueCost)} · {dish.contributionMarginPct}%
-                  contrib
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--garden-leaf)]">
+                    {open ? "Tap to close" : "Tap for detail"}
+                  </p>
+                  <p className="mt-1 font-[family-name:var(--font-display)] text-xl text-[var(--garden-deep)]">
+                    {dish.name}
+                  </p>
+                </div>
+                <p
+                  className={cn(
+                    "shrink-0 font-[family-name:var(--font-display)] text-lg",
+                    dish.profitPerUnit >= 0
+                      ? "text-emerald-800"
+                      : "text-red-800",
+                  )}
+                >
+                  {formatNpr(dish.profitPerUnit)}
                 </p>
               </div>
-              <p
-                className={cn(
-                  "shrink-0 font-[family-name:var(--font-display)] text-lg",
-                  dish.profitPerUnit >= 0
-                    ? "text-emerald-800"
-                    : "text-red-800",
-                )}
-              >
-                {formatNpr(dish.profitPerUnit)}
-              </p>
+              <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
+                <MiniStat label="Sell" value={formatNpr(dish.sellPrice)} />
+                <MiniStat
+                  label="Ingredients"
+                  value={formatNpr(dish.ingredientCost)}
+                />
+                <MiniStat label="True cost" value={formatNpr(dish.trueCost)} />
+                <MiniStat
+                  label={profitLabel}
+                  value={formatNpr(dish.profitPerUnit)}
+                  strong
+                />
+              </div>
             </button>
 
             {open ? (
               <div className="space-y-3 border-t border-[var(--garden-leaf)]/10 px-4 pb-4 pt-3">
                 <label className="block text-[11px] text-[var(--garden-ink)]/50">
                   Sell price (NPR)
-                  <input
-                    type="number"
+                  <SoftNumberInput
                     className={cn(fieldClass, "mt-1")}
                     value={dish.sellPrice}
-                    onChange={(e) =>
+                    onCommit={(n) =>
                       updateMenuItem(dish.menuItemId, {
-                        price: Number(e.target.value) || 0,
+                        price: Math.max(0, n),
                       })
                     }
                   />
                 </label>
 
-                {dish.lines.map((line) => (
-                  <div
-                    key={`${dish.menuItemId}-${line.packId}`}
-                    className="rounded-xl bg-[var(--garden-fog)]/70 p-3"
-                  >
-                    <p className="text-sm font-medium text-[var(--garden-deep)]">
-                      {line.packName}
-                    </p>
-                    <div className="mt-2 grid grid-cols-3 gap-2">
-                      <label className="text-[10px] text-[var(--garden-ink)]/45">
-                        Pack NPR
-                        <input
-                          type="number"
-                          className={cn(fieldClass, "mt-1")}
-                          value={line.packCost}
-                          onChange={(e) =>
-                            updateIngredientPack(line.packId, {
-                              packCost: Number(e.target.value) || 0,
-                            })
+                <p className="text-xs font-semibold text-[var(--garden-deep)]">
+                  Attached ingredients
+                </p>
+                {dish.lines.length === 0 ? (
+                  <p className="rounded-xl bg-[var(--garden-fog)]/70 px-3 py-4 text-center text-sm text-[var(--garden-ink)]/50">
+                    No ingredients yet — add from the shared pack list
+                  </p>
+                ) : (
+                  dish.lines.map((line) => (
+                    <div
+                      key={`${dish.menuItemId}-${line.packId}`}
+                      className="rounded-xl bg-[var(--garden-fog)]/70 p-3"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-sm font-medium text-[var(--garden-deep)]">
+                          {line.packName}
+                        </p>
+                        <button
+                          type="button"
+                          className="text-xs font-semibold text-red-800"
+                          onClick={() =>
+                            removeIngredient(dish.menuItemId, line.packId)
                           }
-                        />
-                      </label>
-                      <label className="text-[10px] text-[var(--garden-ink)]/45">
-                        Yield
-                        <input
-                          type="number"
-                          className={cn(fieldClass, "mt-1")}
-                          value={line.yieldQty}
-                          onChange={(e) =>
-                            updateIngredientPack(line.packId, {
-                              yieldQty: Number(e.target.value) || 0,
-                            })
-                          }
-                        />
-                      </label>
-                      <label className="text-[10px] text-[var(--garden-ink)]/45">
-                        Use / dish
-                        <input
-                          type="number"
-                          step="0.1"
-                          className={cn(fieldClass, "mt-1")}
-                          value={line.unitsPerDish}
-                          onChange={(e) => {
-                            if (!recipe) return;
-                            updateDishCostRecipe(dish.menuItemId, {
-                              ingredients: recipe.ingredients.map((ing) =>
-                                ing.packId === line.packId
-                                  ? {
-                                      ...ing,
-                                      unitsPerDish:
-                                        Number(e.target.value) || 0,
-                                    }
-                                  : ing,
-                              ),
-                            });
-                          }}
-                        />
-                      </label>
+                        >
+                          Remove
+                        </button>
+                      </div>
+                      <div className="mt-2 grid grid-cols-3 gap-2">
+                        <label className="text-[10px] text-[var(--garden-ink)]/45">
+                          Pack NPR
+                          <SoftNumberInput
+                            className={cn(fieldClass, "mt-1")}
+                            value={line.packCost}
+                            onCommit={(n) =>
+                              updateIngredientPack(line.packId, {
+                                packCost: Math.max(0, n),
+                              })
+                            }
+                          />
+                        </label>
+                        <label className="text-[10px] text-[var(--garden-ink)]/45">
+                          {servingsLabel(line.yieldLabel)}
+                          <SoftNumberInput
+                            className={cn(fieldClass, "mt-1")}
+                            value={line.yieldQty}
+                            onCommit={(n) =>
+                              updateIngredientPack(line.packId, {
+                                yieldQty: Math.max(0, n),
+                              })
+                            }
+                          />
+                        </label>
+                        <label className="text-[10px] text-[var(--garden-ink)]/45">
+                          Use / dish
+                          <SoftNumberInput
+                            className={cn(fieldClass, "mt-1")}
+                            value={line.unitsPerDish}
+                            onCommit={(n) => {
+                              const ingredients = recipe?.ingredients ?? [];
+                              updateDishCostRecipe(dish.menuItemId, {
+                                ingredients: ingredients.map((ing) =>
+                                  ing.packId === line.packId
+                                    ? {
+                                        ...ing,
+                                        unitsPerDish: Math.max(0, n),
+                                      }
+                                    : ing,
+                                ),
+                              });
+                            }}
+                          />
+                        </label>
+                      </div>
+                      <p className="mt-2 text-right text-xs font-semibold">
+                        Line cost {formatNpr(line.cost)}
+                      </p>
                     </div>
-                    <p className="mt-2 text-right text-xs font-semibold">
-                      Line cost {formatNpr(line.cost)}
-                    </p>
-                  </div>
-                ))}
+                  ))
+                )}
+
+                <div className="flex gap-2">
+                  <select
+                    className={cn(fieldClass, "flex-1")}
+                    value={attachFor[dish.menuItemId] ?? ""}
+                    onChange={(e) =>
+                      setAttachFor((prev) => ({
+                        ...prev,
+                        [dish.menuItemId]: e.target.value,
+                      }))
+                    }
+                  >
+                    <option value="">Pick pack…</option>
+                    {availablePacks.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    className="min-h-10 shrink-0 rounded-xl bg-[var(--garden-deep)] px-3 text-sm font-semibold text-white"
+                    onClick={() =>
+                      attachIngredient(
+                        dish.menuItemId,
+                        attachFor[dish.menuItemId] ?? "",
+                      )
+                    }
+                  >
+                    Add ingredient
+                  </button>
+                </div>
 
                 <div className="space-y-1 rounded-xl bg-[var(--garden-fog)]/70 px-3 py-2.5 text-sm">
                   <CostRow
@@ -571,7 +734,7 @@ export function CostTargetsPanel() {
                   onClick={() => {
                     if (
                       typeof window !== "undefined" &&
-                      !window.confirm(`Delete ${dish.name} and its packs?`)
+                      !window.confirm(`Delete ${dish.name}?`)
                     ) {
                       return;
                     }
@@ -580,7 +743,7 @@ export function CostTargetsPanel() {
                   }}
                   className="w-full py-2 text-center text-sm font-semibold text-red-800"
                 >
-                  Delete dish + packs
+                  Delete dish
                 </button>
               </div>
             ) : null}

@@ -88,8 +88,14 @@ type OpsContextValue = {
   updateRecipe: (menuItemId: string, recipe: RecipeLine[]) => void;
   addMenuItem: (
     item: MenuItem,
-    costing?: { packCost?: number; yieldQty?: number; yieldLabel?: string },
+    costing?: {
+      packCost?: number;
+      yieldQty?: number;
+      yieldLabel?: string;
+      createPack?: boolean;
+    },
   ) => void;
+  addIngredientPack: (pack: IngredientPack) => void;
   removeMenuItem: (id: string) => void;
   updateStock: (id: string, patch: Partial<StockItem>) => void;
   updateStaff: (id: string, patch: Partial<StaffMember>) => void;
@@ -353,12 +359,30 @@ export function OpsProvider({ children }: { children: ReactNode }) {
       menuItemId: string,
       recipePatch: Partial<DishCostRecipe> | { ingredients: DishIngredientUse[] },
     ) =>
-      patch((s) => ({
-        ...s,
-        dishCostRecipes: s.dishCostRecipes.map((r) =>
-          r.menuItemId === menuItemId ? { ...r, ...recipePatch } : r,
-        ),
-      })),
+      patch((s) => {
+        const exists = s.dishCostRecipes.some(
+          (r) => r.menuItemId === menuItemId,
+        );
+        if (!exists) {
+          return {
+            ...s,
+            dishCostRecipes: [
+              ...s.dishCostRecipes,
+              {
+                menuItemId,
+                ingredients: [],
+                ...recipePatch,
+              },
+            ],
+          };
+        }
+        return {
+          ...s,
+          dishCostRecipes: s.dishCostRecipes.map((r) =>
+            r.menuItemId === menuItemId ? { ...r, ...recipePatch } : r,
+          ),
+        };
+      }),
     [patch],
   );
 
@@ -391,26 +415,45 @@ export function OpsProvider({ children }: { children: ReactNode }) {
         packCost?: number;
         yieldQty?: number;
         yieldLabel?: string;
+        /** When true, also add a shared pack (not auto-attached). */
+        createPack?: boolean;
       },
     ) =>
       patch((s) => {
-        const costing = createCostingForNewDish(item);
-        if (costingOpts?.packCost != null) {
-          costing.pack.packCost = costingOpts.packCost;
-        }
-        if (costingOpts?.yieldQty != null) {
-          costing.pack.yieldQty = costingOpts.yieldQty;
-        }
-        if (costingOpts?.yieldLabel) {
-          costing.pack.yieldLabel = costingOpts.yieldLabel;
+        const nextPacks = [...s.ingredientPacks];
+        if (costingOpts?.createPack !== false && costingOpts?.packCost != null) {
+          const costing = createCostingForNewDish(item);
+          if (costingOpts.packCost != null) {
+            costing.pack.packCost = costingOpts.packCost;
+          }
+          if (costingOpts.yieldQty != null) {
+            costing.pack.yieldQty = costingOpts.yieldQty;
+          }
+          if (costingOpts.yieldLabel) {
+            costing.pack.yieldLabel = costingOpts.yieldLabel;
+          }
+          // Shared list only — dish starts with no attached ingredients
+          nextPacks.push(costing.pack);
         }
         return {
           ...s,
           menuItems: [...s.menuItems, { recipe: [], ...item }],
-          ingredientPacks: [...s.ingredientPacks, costing.pack],
-          dishCostRecipes: [...s.dishCostRecipes, costing.recipe],
+          ingredientPacks: nextPacks,
+          dishCostRecipes: [
+            ...s.dishCostRecipes,
+            { menuItemId: item.id, ingredients: [] },
+          ],
         };
       }),
+    [patch],
+  );
+
+  const addIngredientPack = useCallback(
+    (pack: IngredientPack) =>
+      patch((s) => ({
+        ...s,
+        ingredientPacks: [...s.ingredientPacks, pack],
+      })),
     [patch],
   );
 
@@ -1037,6 +1080,7 @@ export function OpsProvider({ children }: { children: ReactNode }) {
     updateMenuItem,
     updateRecipe,
     addMenuItem,
+    addIngredientPack,
     removeMenuItem,
     updateStock,
     updateStaff,

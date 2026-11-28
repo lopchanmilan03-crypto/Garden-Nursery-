@@ -1427,10 +1427,13 @@ export function buildDishCostRows(
   monthlyOverhead: number,
 ): DishCostRow[] {
   const packMap = new Map(packs.map((p) => [p.id, p]));
+  const recipeMap = new Map(recipes.map((r) => [r.menuItemId, r]));
   const rows: DishCostRow[] = [];
-  for (const recipe of recipes) {
-    const item = menu.find((m) => m.id === recipe.menuItemId);
-    if (!item) continue;
+  for (const item of menu) {
+    const recipe = recipeMap.get(item.id) ?? {
+      menuItemId: item.id,
+      ingredients: [] as DishIngredientUse[],
+    };
     const lines: DishCostRow["lines"] = [];
     for (const use of recipe.ingredients) {
       const pack = packMap.get(use.packId);
