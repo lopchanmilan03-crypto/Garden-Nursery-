@@ -10,14 +10,25 @@ import {
   type ReactNode,
 } from "react";
 import {
+  OPS_TODAY,
+  authRoleToOpsRole,
   createSeedState,
   deductStockForLines,
+  expenseHotspots,
+  minutesBetween,
   orderPayableTotal,
   orderSubtotal,
   paySplit,
+  profitByProduct,
+  profitMarginPct,
+  stockAlertLevel,
   todayKharcha,
   todaySale,
+  topSellers,
+  tryLogin,
   withSeedRecipes,
+  type AttendanceRecord,
+  type AuthSession,
   type BillSplit,
   type DemoOrder,
   type Expense,
@@ -34,7 +45,7 @@ import {
   type Vendor,
 } from "@/lib/demo-data";
 
-const STORAGE_KEY = "garden-restaurant-ops-v3";
+const STORAGE_KEY = "garden-restaurant-ops-v4";
 
 type PlaceOrderInput = {
   table: string | null;
@@ -50,6 +61,8 @@ type PlaceOrderInput = {
 type OpsContextValue = {
   state: OpsState;
   ready: boolean;
+  login: (username: string, password: string) => boolean;
+  logout: () => void;
   setRole: (role: Role) => void;
   setWaiterName: (name: string) => void;
   updateSettings: (patch: Partial<OpsSettings>) => void;
@@ -62,8 +75,11 @@ type OpsContextValue = {
   updateExpenseCategory: (id: string, patch: Partial<ExpenseCategory>) => void;
   addExpenseCategory: (cat: ExpenseCategory) => void;
   addExpense: (expense: Expense) => void;
+  updateExpense: (id: string, patch: Partial<Expense>) => void;
+  markExpensePaid: (id: string) => void;
   updateVendor: (id: string, patch: Partial<Vendor>) => void;
   addVendor: (vendor: Vendor) => void;
+  payVendorDues: (id: string, amount?: number) => void;
   placeWaiterOrder: (input: PlaceOrderInput) => string;
   placeGuestOrder: (input: PlaceOrderInput) => string;
   bumpKitchenTicket: (id: string, status: KitchenTicket["status"]) => void;
@@ -77,6 +93,8 @@ type OpsContextValue = {
     parts: { label: string; amount?: number; seats?: number }[],
   ) => void;
   paySplitPart: (orderId: string, splitId: string, method: PayMethod) => void;
+  clockIn: (staffId: string) => void;
+  clockOut: (staffId: string) => void;
   closeDay: () => void;
   reopenDay: () => void;
   resetDemo: () => void;
@@ -85,10 +103,16 @@ type OpsContextValue = {
     sale: number;
     kharcha: number;
     profit: number;
+    marginPct: number;
     split: { cash: number; card: number; upi: number };
     lowStock: StockItem[];
+    criticalStock: StockItem[];
     vendorDues: number;
+    unpaidExpenses: number;
     takeawayOpen: number;
+    topSellers: ReturnType<typeof topSellers>;
+    expenseHotspots: ReturnType<typeof expenseHotspots>;
+    profitByProduct: ReturnType<typeof profitByProduct>;
   };
 };
 
@@ -104,6 +128,14 @@ function nowTime() {
   });
 }
 
+function scheduledStartFor(member: StaffMember | undefined): string {
+  if (!member) return "09:00";
+  const m = member.shift.match(/(\d{1,2})/);
+  if (!m) return "09:00";
+  const hour = Number(m[1]);
+  return `${String(hour).padStart(2, "0")}:00`;
+}
+
 function mergeState(parsed: Partial<OpsState>): OpsState {
   const seed = createSeedState();
   const menuItems = withSeedRecipes(
@@ -113,7 +145,11 @@ function mergeState(parsed: Partial<OpsState>): OpsState {
     ...seed,
     ...parsed,
     menuItems,
+    attendance: parsed.attendance?.length
+      ? parsed.attendance
+      : seed.attendance,
     settings: { ...seed.settings, ...(parsed.settings ?? {}) },
+    session: parsed.session ?? null,
   };
 }
 
@@ -152,6 +188,28 @@ export function OpsProvider({ children }: { children: ReactNode }) {
   const patch = useCallback((fn: (prev: OpsState) => OpsState) => {
     setState(fn);
   }, []);
+
+  const login = useCallback(
+    (username: string, password: string) => {
+      const session = tryLogin(username, password);
+      if (!session) return false;
+      patch((s) => ({
+        ...s,
+        session,
+        role: authRoleToOpsRole(session.role),
+        waiterName:
+          session.role === "staff" || session.role === "owner"
+            ? session.displayName
+            : s.waiterName,
+      }));
+      return true;
+    },
+    [patch],
+  );
+
+  const logout = useCallback(() => {
+    patch((s) => ({ ...s, session: null }));
+  }, [patch]);
 
   const setRole = useCallback(
     (role: Role) => patch((s) => ({ ...s, role })),
@@ -265,6 +323,41 @@ export function OpsProvider({ children }: { children: ReactNode }) {
     [patch],
   );
 
+  const updateExpense = useCallback(
+    (id: string, expensePatch: Partial<Expense>) =>
+      patch((s) => ({
+        ...s,
+        expenses: s.expenses.map((e) =>
+          e.id === id ? { ...e, ...expensePatch } : e,
+        ),
+      })),
+    [patch],
+  );
+
+  const markExpensePaid = useCallback(
+    (id: string) =>
+      patch((s) => {
+        const expense = s.expenses.find((e) => e.id === id);
+        if (!expense || expense.paid) return s;
+        let vendors = s.vendors;
+        if (expense.vendorId) {
+          vendors = vendors.map((v) =>
+            v.id === expense.vendorId
+              ? { ...v, dues: Math.max(0, v.dues - expense.amount) }
+              : v,
+          );
+        }
+        return {
+          ...s,
+          vendors,
+          expenses: s.expenses.map((e) =>
+            e.id === id ? { ...e, paid: true } : e,
+          ),
+        };
+      }),
+    [patch],
+  );
+
   const updateVendor = useCallback(
     (id: string, vendorPatch: Partial<Vendor>) =>
       patch((s) => ({
@@ -279,6 +372,19 @@ export function OpsProvider({ children }: { children: ReactNode }) {
   const addVendor = useCallback(
     (vendor: Vendor) =>
       patch((s) => ({ ...s, vendors: [...s.vendors, vendor] })),
+    [patch],
+  );
+
+  const payVendorDues = useCallback(
+    (id: string, amount?: number) =>
+      patch((s) => ({
+        ...s,
+        vendors: s.vendors.map((v) => {
+          if (v.id !== id) return v;
+          const pay = amount ?? v.dues;
+          return { ...v, dues: Math.max(0, +(v.dues - pay).toFixed(0)) };
+        }),
+      })),
     [patch],
   );
 
@@ -297,7 +403,11 @@ export function OpsProvider({ children }: { children: ReactNode }) {
           table: input.table,
           type: input.type,
           guest: input.guest,
-          waiter: input.waiter ?? (source === "guest" ? "Guest QR" : s.waiterName),
+          waiter:
+            input.waiter ??
+            (source === "guest"
+              ? "Guest QR"
+              : (s.session?.displayName ?? s.waiterName)),
           lines: input.lines,
           status: "queued",
           placedAt,
@@ -396,7 +506,12 @@ export function OpsProvider({ children }: { children: ReactNode }) {
           ...s.dayClose,
           [method]: s.dayClose[method] + amount,
         };
-        return { ...s, orders, dayClose };
+        const tables = s.tables.map((t) =>
+          t.orderId === orderId
+            ? { ...t, status: "open" as const, orderId: undefined }
+            : t,
+        );
+        return { ...s, orders, dayClose, tables };
       }),
     [patch],
   );
@@ -481,7 +596,8 @@ export function OpsProvider({ children }: { children: ReactNode }) {
         const payable = orderPayableTotal(order, s.menuItems, s.settings);
         let splits: BillSplit[] = [];
         if (mode === "seats") {
-          const totalSeats = parts.reduce((sum, p) => sum + (p.seats ?? 1), 0) || 1;
+          const totalSeats =
+            parts.reduce((sum, p) => sum + (p.seats ?? 1), 0) || 1;
           splits = parts.map((p, i) => {
             const seats = p.seats ?? 1;
             return {
@@ -544,6 +660,59 @@ export function OpsProvider({ children }: { children: ReactNode }) {
     [patch],
   );
 
+  const clockIn = useCallback(
+    (staffId: string) =>
+      patch((s) => {
+        const member = s.staff.find((m) => m.id === staffId);
+        const time = nowTime();
+        const scheduled = scheduledStartFor(member);
+        const late = minutesBetween(scheduled, time) > 5;
+        const existing = s.attendance.find(
+          (a) => a.staffId === staffId && a.date === OPS_TODAY,
+        );
+        const record: AttendanceRecord = {
+          id: existing?.id ?? `att-${staffId}-${Date.now()}`,
+          staffId,
+          date: OPS_TODAY,
+          clockIn: time,
+          clockOut: undefined,
+          scheduledStart: scheduled,
+          status: late ? "late" : "working",
+        };
+        const attendance = existing
+          ? s.attendance.map((a) => (a.id === existing.id ? record : a))
+          : [record, ...s.attendance];
+        return {
+          ...s,
+          attendance,
+          staff: s.staff.map((m) =>
+            m.id === staffId ? { ...m, presentToday: true } : m,
+          ),
+        };
+      }),
+    [patch],
+  );
+
+  const clockOut = useCallback(
+    (staffId: string) =>
+      patch((s) => {
+        const time = nowTime();
+        return {
+          ...s,
+          attendance: s.attendance.map((a) => {
+            if (a.staffId !== staffId || a.date !== OPS_TODAY) return a;
+            const wasLate = a.status === "late";
+            return {
+              ...a,
+              clockOut: time,
+              status: wasLate ? "late" : "on-time",
+            };
+          }),
+        };
+      }),
+    [patch],
+  );
+
   const closeDay = useCallback(
     () =>
       patch((s) => {
@@ -573,10 +742,11 @@ export function OpsProvider({ children }: { children: ReactNode }) {
   );
 
   const resetDemo = useCallback(() => {
-    const next = createSeedState();
+    const session = state.session;
+    const next = { ...createSeedState(), session };
     setState(next);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-  }, []);
+  }, [state.session]);
 
   const payableTotal = useCallback(
     (order: DemoOrder) =>
@@ -587,22 +757,39 @@ export function OpsProvider({ children }: { children: ReactNode }) {
   const metrics = useMemo(() => {
     const sale = todaySale(state.orders, state.menuItems, state.settings);
     const kharcha = todayKharcha(state.expenses, state.dayClose.date);
+    const lowStock = state.stock.filter((s) => stockAlertLevel(s) !== "ok");
+    const criticalStock = state.stock.filter(
+      (s) => stockAlertLevel(s) === "critical",
+    );
     return {
       sale,
       kharcha,
       profit: sale - kharcha,
+      marginPct: profitMarginPct(sale, kharcha),
       split: paySplit(state.orders, state.menuItems, state.settings),
-      lowStock: state.stock.filter((s) => s.qty <= s.lowAt),
+      lowStock,
+      criticalStock,
       vendorDues: state.vendors.reduce((sum, v) => sum + v.dues, 0),
+      unpaidExpenses: state.expenses
+        .filter((e) => !e.paid)
+        .reduce((sum, e) => sum + e.amount, 0),
       takeawayOpen: state.kitchenTickets.filter(
         (t) => t.type === "takeaway" && t.status !== "bumped",
       ).length,
+      topSellers: topSellers(state.orders, state.menuItems),
+      expenseHotspots: expenseHotspots(
+        state.expenses,
+        state.expenseCategories,
+      ),
+      profitByProduct: profitByProduct(state.orders, state.menuItems),
     };
   }, [state]);
 
   const value: OpsContextValue = {
     state,
     ready,
+    login,
+    logout,
     setRole,
     setWaiterName,
     updateSettings,
@@ -615,8 +802,11 @@ export function OpsProvider({ children }: { children: ReactNode }) {
     updateExpenseCategory,
     addExpenseCategory,
     addExpense,
+    updateExpense,
+    markExpensePaid,
     updateVendor,
     addVendor,
+    payVendorDues,
     placeWaiterOrder,
     placeGuestOrder,
     bumpKitchenTicket,
@@ -626,6 +816,8 @@ export function OpsProvider({ children }: { children: ReactNode }) {
     voidLine,
     splitBill,
     paySplitPart,
+    clockIn,
+    clockOut,
     closeDay,
     reopenDay,
     resetDemo,
@@ -640,4 +832,8 @@ export function useOps() {
   const ctx = useContext(OpsContext);
   if (!ctx) throw new Error("useOps must be used within OpsProvider");
   return ctx;
+}
+
+export function useSession(): AuthSession | null {
+  return useOps().state.session;
 }

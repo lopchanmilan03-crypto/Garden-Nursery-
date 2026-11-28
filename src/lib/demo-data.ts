@@ -12,12 +12,44 @@ export type MenuItem = {
   name: string;
   description: string;
   price: number;
+  /** Approx unit cost NPR — for profit-by-product reports */
+  cost?: number;
   category: MenuCategory;
   popular?: boolean;
   stockSkuId?: string;
   recipe?: RecipeLine[];
   /** Public menu / marketing image (Unsplash/Pexels or custom URL) */
   image?: string;
+};
+
+/** App login role (maps staff floor → "staff"). */
+export type AuthRole = "owner" | "staff" | "kitchen";
+
+export type AuthSession = {
+  role: AuthRole;
+  username: string;
+  staffId: string;
+  displayName: string;
+};
+
+export type DemoLogin = {
+  username: string;
+  password: string;
+  role: AuthRole;
+  staffId: string;
+  displayName: string;
+};
+
+export type AttendanceStatus = "on-time" | "late" | "absent" | "working";
+
+export type AttendanceRecord = {
+  id: string;
+  staffId: string;
+  date: string;
+  clockIn?: string;
+  clockOut?: string;
+  scheduledStart: string;
+  status: AttendanceStatus;
 };
 
 export type Testimonial = {
@@ -281,6 +313,7 @@ export const seedMenuItems: MenuItem[] = [
     name: "Garden Filter Coffee",
     description: "Single-origin Nepali beans, pour-over, lightly floral.",
     price: 180,
+    cost: 55,
     category: "drinks",
     popular: true,
     stockSkuId: "sku-coffee",
@@ -292,6 +325,7 @@ export const seedMenuItems: MenuItem[] = [
     name: "Masala Chiya",
     description: "Cardamom, ginger, black tea — clay cup, unhurried.",
     price: 80,
+    cost: 18,
     category: "drinks",
     popular: true,
     stockSkuId: "sku-tea",
@@ -303,6 +337,7 @@ export const seedMenuItems: MenuItem[] = [
     name: "Mint Lemonade",
     description: "Fresh lemon, patio mint, a touch of Himalayan salt.",
     price: 160,
+    cost: 35,
     category: "drinks",
     stockSkuId: "sku-lemon",
     image:
@@ -313,6 +348,7 @@ export const seedMenuItems: MenuItem[] = [
     name: "Terrace Green Salad",
     description: "Mixed leaves from the planters, cucumber, lime-honey dressing.",
     price: 280,
+    cost: 90,
     category: "sides",
     popular: true,
     stockSkuId: "sku-greens",
@@ -324,6 +360,7 @@ export const seedMenuItems: MenuItem[] = [
     name: "Garden Dal Bhat",
     description: "Slow lentils, steamed rice, seasonal tarkari, pickle — one thoughtful plate.",
     price: 450,
+    cost: 160,
     category: "mains",
     popular: true,
     stockSkuId: "sku-dal",
@@ -335,6 +372,7 @@ export const seedMenuItems: MenuItem[] = [
     name: "Steam Momos (6)",
     description: "Veg or chicken, sesame achar — a small share for the table.",
     price: 280,
+    cost: 95,
     category: "mains",
     stockSkuId: "sku-momo",
     image:
@@ -345,12 +383,40 @@ export const seedMenuItems: MenuItem[] = [
     name: "Walnut Brownie",
     description: "Warm square with cocoa dust — for slow afternoons.",
     price: 240,
+    cost: 70,
     category: "sweets",
     stockSkuId: "sku-cocoa",
     image:
       "https://images.unsplash.com/photo-1606313564200-e75d5e30476c?auto=format&fit=crop&w=900&q=80",
   },
 ];
+
+/** Demo credentials — no real backend. */
+export const demoLogins: DemoLogin[] = [
+  {
+    username: "owner",
+    password: "owner",
+    role: "owner",
+    staffId: "st-owner",
+    displayName: "Anupam Bajracharya",
+  },
+  {
+    username: "staff",
+    password: "staff",
+    role: "staff",
+    staffId: "st-sita",
+    displayName: "Sita Gurung",
+  },
+  {
+    username: "kitchen",
+    password: "kitchen",
+    role: "kitchen",
+    staffId: "st-chef",
+    displayName: "Bikash Lama",
+  },
+];
+
+export const OPS_TODAY = "2026-11-28";
 
 /** @deprecated use seedMenuItems via OpsProvider */
 export const menuItems = seedMenuItems;
@@ -371,7 +437,11 @@ export const seedOrders: DemoOrder[] = [
     id: "ord-1042",
     table: "T2",
     guest: "Anisha R.",
-    items: ["Garden Filter Coffee", "Terrace Green Salad"],
+    items: ["Garden Filter Coffee ×1", "Terrace Green Salad ×1"],
+    lines: [
+      { menuItemId: "filter-coffee", name: "Garden Filter Coffee", qty: 1 },
+      { menuItemId: "salad", name: "Terrace Green Salad", qty: 1 },
+    ],
     total: 460,
     status: "preparing",
     placedAt: "14:38",
@@ -381,7 +451,11 @@ export const seedOrders: DemoOrder[] = [
     id: "ord-1041",
     table: "T3",
     guest: "Pratik S.",
-    items: ["Garden Dal Bhat", "Masala Chiya"],
+    items: ["Garden Dal Bhat ×1", "Masala Chiya ×1"],
+    lines: [
+      { menuItemId: "dal-bhat", name: "Garden Dal Bhat", qty: 1 },
+      { menuItemId: "chiya", name: "Masala Chiya", qty: 1 },
+    ],
     total: 530,
     status: "ready",
     placedAt: "14:21",
@@ -391,7 +465,11 @@ export const seedOrders: DemoOrder[] = [
     id: "ord-1040",
     table: "T6",
     guest: "Laptop guest",
-    items: ["Garden Filter Coffee ×2", "Walnut Brownie"],
+    items: ["Garden Filter Coffee ×2", "Walnut Brownie ×1"],
+    lines: [
+      { menuItemId: "filter-coffee", name: "Garden Filter Coffee", qty: 2 },
+      { menuItemId: "brownie", name: "Walnut Brownie", qty: 1 },
+    ],
     total: 600,
     status: "served",
     placedAt: "13:55",
@@ -402,10 +480,30 @@ export const seedOrders: DemoOrder[] = [
     id: "ord-1039",
     table: "T4",
     guest: "Walk-in",
-    items: ["Mint Lemonade", "Steam Momos (6)"],
+    items: ["Mint Lemonade ×1", "Steam Momos (6) ×1"],
+    lines: [
+      { menuItemId: "lemonade", name: "Mint Lemonade", qty: 1 },
+      { menuItemId: "momos", name: "Steam Momos (6)", qty: 1 },
+    ],
     total: 440,
     status: "paid",
     placedAt: "13:40",
+    type: "dine-in",
+    payMethod: "cash",
+  },
+  {
+    id: "ord-1038",
+    table: "T1",
+    guest: "Morning regular",
+    items: ["Garden Filter Coffee ×1", "Masala Chiya ×2", "Garden Dal Bhat ×1"],
+    lines: [
+      { menuItemId: "filter-coffee", name: "Garden Filter Coffee", qty: 1 },
+      { menuItemId: "chiya", name: "Masala Chiya", qty: 2 },
+      { menuItemId: "dal-bhat", name: "Garden Dal Bhat", qty: 1 },
+    ],
+    total: 790,
+    status: "paid",
+    placedAt: "10:15",
     type: "dine-in",
     payMethod: "cash",
   },
@@ -465,8 +563,18 @@ export const seedExpenseCategories: ExpenseCategory[] = [
   { id: "exp-dairy", name: "Dairy", nameNp: "दुग्ध" },
   { id: "exp-gas", name: "Gas & utilities", nameNp: "ग्यास / बिल" },
   { id: "exp-rent", name: "Rent", nameNp: "भाडा" },
+  { id: "exp-salary", name: "Salary", nameNp: "तलब" },
+  { id: "exp-vendor", name: "Vendor bills", nameNp: "बिक्रेता" },
   { id: "exp-misc", name: "Misc / packaging", nameNp: "अन्य" },
 ];
+
+/** Major expense category ids — admin-only create/edit focus. */
+export const majorExpenseCategoryIds = [
+  "exp-rent",
+  "exp-gas",
+  "exp-vendor",
+  "exp-salary",
+] as const;
 
 export const seedVendors: Vendor[] = [
   {
@@ -506,7 +614,7 @@ export const seedExpenses: Expense[] = [
     label: "Morning vegetable run",
     amount: 2400,
     vendorId: "ven-kalimati",
-    date: "2026-11-27",
+    date: "2026-11-28",
     paid: true,
   },
   {
@@ -515,7 +623,7 @@ export const seedExpenses: Expense[] = [
     label: "Yogurt & milk",
     amount: 1200,
     vendorId: "ven-dairy",
-    date: "2026-11-27",
+    date: "2026-11-28",
     paid: false,
   },
   {
@@ -524,7 +632,7 @@ export const seedExpenses: Expense[] = [
     label: "LPG cylinder",
     amount: 1900,
     vendorId: "ven-gas",
-    date: "2026-11-26",
+    date: "2026-11-27",
     paid: true,
   },
   {
@@ -533,7 +641,7 @@ export const seedExpenses: Expense[] = [
     label: "Chicken for momos",
     amount: 3200,
     vendorId: "ven-meat",
-    date: "2026-11-26",
+    date: "2026-11-27",
     paid: false,
   },
   {
@@ -541,8 +649,82 @@ export const seedExpenses: Expense[] = [
     categoryId: "exp-misc",
     label: "Planter soil & pots",
     amount: 650,
-    date: "2026-11-25",
+    date: "2026-11-26",
     paid: true,
+  },
+  {
+    id: "ex-6",
+    categoryId: "exp-rent",
+    label: "November shop rent · Lazimpat",
+    amount: 85000,
+    date: "2026-11-01",
+    paid: false,
+  },
+  {
+    id: "ex-7",
+    categoryId: "exp-salary",
+    label: "November salaries (partial)",
+    amount: 155000,
+    date: "2026-11-25",
+    paid: false,
+  },
+  {
+    id: "ex-8",
+    categoryId: "exp-vendor",
+    label: "Kalimati weekly settlement",
+    amount: 4200,
+    vendorId: "ven-kalimati",
+    date: "2026-11-27",
+    paid: false,
+  },
+];
+
+export const seedAttendance: AttendanceRecord[] = [
+  {
+    id: "att-1",
+    staffId: "st-sita",
+    date: OPS_TODAY,
+    clockIn: "06:58",
+    scheduledStart: "07:00",
+    status: "working",
+  },
+  {
+    id: "att-2",
+    staffId: "st-ram",
+    date: OPS_TODAY,
+    scheduledStart: "15:00",
+    status: "absent",
+  },
+  {
+    id: "att-3",
+    staffId: "st-chef",
+    date: OPS_TODAY,
+    clockIn: "09:12",
+    scheduledStart: "09:00",
+    status: "working",
+  },
+  {
+    id: "att-4",
+    staffId: "st-cash",
+    date: OPS_TODAY,
+    scheduledStart: "08:00",
+    status: "absent",
+  },
+  {
+    id: "att-5",
+    staffId: "st-help",
+    date: OPS_TODAY,
+    clockIn: "08:05",
+    scheduledStart: "08:00",
+    status: "working",
+  },
+  {
+    id: "att-6",
+    staffId: "st-owner",
+    date: OPS_TODAY,
+    clockIn: "08:30",
+    scheduledStart: "08:00",
+    status: "working",
   },
 ];
 
@@ -604,7 +786,7 @@ export const seedStaff: StaffMember[] = [
 ];
 
 export const seedDayClose: DayClose = {
-  date: "2026-11-27",
+  date: OPS_TODAY,
   cash: 440,
   card: 0,
   upi: 600,
@@ -664,11 +846,13 @@ export type OpsState = {
   expenses: Expense[];
   vendors: Vendor[];
   staff: StaffMember[];
+  attendance: AttendanceRecord[];
   dayClose: DayClose;
   monthly: MonthlyPoint[];
   role: Role;
   waiterName: string;
   settings: OpsSettings;
+  session: AuthSession | null;
 };
 
 /** Attach simple recipe lines from stockSkuId when missing; backfill marketing images. */
@@ -720,12 +904,162 @@ export function createSeedState(): OpsState {
     expenses: structuredClone(seedExpenses),
     vendors: structuredClone(seedVendors),
     staff: structuredClone(seedStaff),
+    attendance: structuredClone(seedAttendance),
     dayClose: structuredClone(seedDayClose),
     monthly: structuredClone(seedMonthly),
     role: "owner",
     waiterName: "Sita Gurung",
     settings: { vatEnabled: true, vatPercent: 13 },
+    session: null,
   };
+}
+
+export function authRoleToOpsRole(role: AuthRole): Role {
+  if (role === "staff") return "waiter";
+  if (role === "kitchen") return "kitchen";
+  return "owner";
+}
+
+export function tryLogin(
+  username: string,
+  password: string,
+): AuthSession | null {
+  const hit = demoLogins.find(
+    (d) =>
+      d.username.toLowerCase() === username.trim().toLowerCase() &&
+      d.password === password,
+  );
+  if (!hit) return null;
+  return {
+    role: hit.role,
+    username: hit.username,
+    staffId: hit.staffId,
+    displayName: hit.displayName,
+  };
+}
+
+export function minutesBetween(a: string, b: string): number {
+  const [ah, am] = a.split(":").map(Number);
+  const [bh, bm] = b.split(":").map(Number);
+  return bh * 60 + bm - (ah * 60 + am);
+}
+
+export function attendanceLabel(status: AttendanceStatus): string {
+  if (status === "on-time") return "On time";
+  if (status === "late") return "Late";
+  if (status === "working") return "On shift";
+  return "Not in";
+}
+
+export type TopSeller = {
+  menuItemId: string;
+  name: string;
+  qty: number;
+  revenue: number;
+};
+
+export type ExpenseHotspot = {
+  categoryId: string;
+  name: string;
+  amount: number;
+};
+
+export type ProductProfit = {
+  menuItemId: string;
+  name: string;
+  qty: number;
+  revenue: number;
+  cost: number;
+  profit: number;
+  marginPct: number;
+};
+
+export function topSellers(
+  orders: DemoOrder[],
+  menu: MenuItem[],
+  limit = 5,
+): TopSeller[] {
+  const map = new Map<string, TopSeller>();
+  for (const order of orders) {
+    if (order.status === "cancelled") continue;
+    const lines = activeLines(order);
+    if (!lines.length) continue;
+    for (const line of lines) {
+      const item = menu.find((m) => m.id === line.menuItemId);
+      const cur = map.get(line.menuItemId) ?? {
+        menuItemId: line.menuItemId,
+        name: line.name,
+        qty: 0,
+        revenue: 0,
+      };
+      cur.qty += line.qty;
+      cur.revenue += (item?.price ?? 0) * line.qty;
+      map.set(line.menuItemId, cur);
+    }
+  }
+  return [...map.values()].sort((a, b) => b.qty - a.qty).slice(0, limit);
+}
+
+export function expenseHotspots(
+  expenses: Expense[],
+  categories: ExpenseCategory[],
+  limit = 5,
+): ExpenseHotspot[] {
+  const map = new Map<string, number>();
+  for (const e of expenses) {
+    map.set(e.categoryId, (map.get(e.categoryId) ?? 0) + e.amount);
+  }
+  return [...map.entries()]
+    .map(([categoryId, amount]) => ({
+      categoryId,
+      name: categories.find((c) => c.id === categoryId)?.name ?? categoryId,
+      amount,
+    }))
+    .sort((a, b) => b.amount - a.amount)
+    .slice(0, limit);
+}
+
+export function profitByProduct(
+  orders: DemoOrder[],
+  menu: MenuItem[],
+  limit = 5,
+): ProductProfit[] {
+  const map = new Map<string, ProductProfit>();
+  for (const order of orders) {
+    if (order.status !== "paid" && order.status !== "served") continue;
+    for (const line of activeLines(order)) {
+      const item = menu.find((m) => m.id === line.menuItemId);
+      const price = item?.price ?? 0;
+      const unitCost = item?.cost ?? Math.round(price * 0.35);
+      const cur = map.get(line.menuItemId) ?? {
+        menuItemId: line.menuItemId,
+        name: line.name,
+        qty: 0,
+        revenue: 0,
+        cost: 0,
+        profit: 0,
+        marginPct: 0,
+      };
+      cur.qty += line.qty;
+      cur.revenue += price * line.qty;
+      cur.cost += unitCost * line.qty;
+      cur.profit = cur.revenue - cur.cost;
+      cur.marginPct = cur.revenue
+        ? +((cur.profit / cur.revenue) * 100).toFixed(1)
+        : 0;
+      map.set(line.menuItemId, cur);
+    }
+  }
+  return [...map.values()].sort((a, b) => b.profit - a.profit).slice(0, limit);
+}
+
+export function stockAlertLevel(
+  row: StockItem,
+): "ok" | "low" | "critical" {
+  if (row.qty <= 0) return "critical";
+  if (row.qty <= row.lowAt * 0.5) return "critical";
+  if (row.qty <= row.lowAt) return "low";
+  return "ok";
 }
 
 export function activeLines(order: DemoOrder): KitchenTicketLine[] {
@@ -788,10 +1122,15 @@ export function todaySale(orders: DemoOrder[], menu: MenuItem[] = seedMenuItems,
     .reduce((s, o) => s + orderPayableTotal(o, menu, settings), 0);
 }
 
-export function todayKharcha(expenses: Expense[], date = "2026-11-27") {
+export function todayKharcha(expenses: Expense[], date = OPS_TODAY) {
   return expenses
     .filter((e) => e.date === date)
     .reduce((s, e) => s + e.amount, 0);
+}
+
+export function profitMarginPct(sale: number, kharcha: number): number {
+  if (!sale) return 0;
+  return +(((sale - kharcha) / sale) * 100).toFixed(1);
 }
 
 export function paySplit(

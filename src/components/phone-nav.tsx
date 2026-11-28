@@ -1,39 +1,92 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useOps } from "@/lib/ops-store";
 import { cn } from "@/lib/utils";
+import type { AuthRole } from "@/lib/demo-data";
 
-const tabs = [
-  { href: "/", label: "Home", match: (p: string) => p === "/" },
-  {
-    href: "/employee",
-    label: "Employee",
-    match: (p: string) =>
-      p.startsWith("/employee") ||
-      p.startsWith("/order") ||
-      p.startsWith("/staff"),
-  },
-  {
-    href: "/kitchen",
-    label: "Kitchen",
-    match: (p: string) => p.startsWith("/kitchen"),
-  },
-  {
-    href: "/admin",
-    label: "Admin",
-    match: (p: string) => p.startsWith("/admin"),
-  },
-] as const;
+export type NavTab = {
+  href?: string;
+  label: string;
+  active?: boolean;
+  onClick?: () => void;
+  logout?: boolean;
+};
+
+function defaultTabs(role: AuthRole | null, pathname: string): NavTab[] {
+  if (role === "kitchen") {
+    return [
+      {
+        href: "/kitchen",
+        label: "Board",
+        active: pathname.startsWith("/kitchen"),
+      },
+      { href: "/kitchen", label: "Stock", active: false },
+      { label: "Out", logout: true },
+    ];
+  }
+  if (role === "staff") {
+    return [
+      {
+        href: "/employee",
+        label: "Order",
+        active:
+          pathname.startsWith("/employee") ||
+          pathname.startsWith("/order") ||
+          pathname.startsWith("/staff"),
+      },
+      { href: "/employee", label: "Stock", active: false },
+      { href: "/employee", label: "Shift", active: false },
+      { label: "Out", logout: true },
+    ];
+  }
+  return [
+    {
+      href: "/admin",
+      label: "Dash",
+      active: pathname.startsWith("/admin") || pathname.startsWith("/dashboard"),
+    },
+    {
+      href: "/employee",
+      label: "Floor",
+      active:
+        pathname.startsWith("/employee") ||
+        pathname.startsWith("/order") ||
+        pathname.startsWith("/staff"),
+    },
+    {
+      href: "/kitchen",
+      label: "Kitchen",
+      active: pathname.startsWith("/kitchen"),
+    },
+    {
+      href: "/admin",
+      label: "More",
+      active: false,
+    },
+  ];
+}
 
 export function PhoneNav({
   tone = "light",
+  tabs: tabsOverride,
 }: {
   tone?: "light" | "dark";
+  tabs?: NavTab[];
   className?: string;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const { state, logout } = useOps();
+  const role = state.session?.role ?? null;
   const dark = tone === "dark";
+  const tabs = tabsOverride ?? defaultTabs(role, pathname);
+
+  function handleLogout() {
+    logout();
+    router.replace("/");
+  }
 
   return (
     <nav
@@ -44,20 +97,71 @@ export function PhoneNav({
           : "border-[var(--garden-leaf)]/12 bg-[var(--garden-paper)]/97",
       )}
     >
-      <div className="mx-auto grid max-w-md grid-cols-4">
+      <div
+        className={cn(
+          "mx-auto grid max-w-md",
+          tabs.length === 3
+            ? "grid-cols-3"
+            : tabs.length === 5
+              ? "grid-cols-5"
+              : "grid-cols-4",
+        )}
+      >
         {tabs.map((tab) => {
-          const active = tab.match(pathname);
+          if (tab.logout) {
+            return (
+              <button
+                key={tab.label}
+                type="button"
+                onClick={handleLogout}
+                className={cn(
+                  "flex min-h-14 flex-col items-center justify-center gap-0.5 text-[11px] font-semibold tracking-wide",
+                  dark ? "text-white/45" : "text-[var(--garden-ink)]/45",
+                )}
+              >
+                <span className="h-1 w-7 rounded-full bg-transparent" />
+                {tab.label}
+              </button>
+            );
+          }
+          if (tab.onClick) {
+            return (
+              <button
+                key={tab.label}
+                type="button"
+                onClick={tab.onClick}
+                className={cn(
+                  "flex min-h-14 flex-col items-center justify-center gap-0.5 text-[11px] font-semibold tracking-wide",
+                  dark
+                    ? tab.active
+                      ? "text-white"
+                      : "text-white/45"
+                    : tab.active
+                      ? "text-[var(--garden-deep)]"
+                      : "text-[var(--garden-ink)]/45",
+                )}
+              >
+                <span
+                  className={cn(
+                    "h-1 w-7 rounded-full",
+                    tab.active ? "bg-[var(--garden-gold)]" : "bg-transparent",
+                  )}
+                />
+                {tab.label}
+              </button>
+            );
+          }
           return (
             <Link
-              key={tab.href}
-              href={tab.href}
+              key={`${tab.href}-${tab.label}`}
+              href={tab.href ?? "/"}
               className={cn(
                 "flex min-h-14 flex-col items-center justify-center gap-0.5 text-[11px] font-semibold tracking-wide",
                 dark
-                  ? active
+                  ? tab.active
                     ? "text-white"
                     : "text-white/45"
-                  : active
+                  : tab.active
                     ? "text-[var(--garden-deep)]"
                     : "text-[var(--garden-ink)]/45",
               )}
@@ -65,7 +169,7 @@ export function PhoneNav({
               <span
                 className={cn(
                   "h-1 w-7 rounded-full",
-                  active ? "bg-[var(--garden-gold)]" : "bg-transparent",
+                  tab.active ? "bg-[var(--garden-gold)]" : "bg-transparent",
                 )}
               />
               {tab.label}

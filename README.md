@@ -1,19 +1,21 @@
-# Garden Restaurant
+# Garden Restaurant — cafe ops
 
-Cafe ordering MVP for **Garden Restaurant** (Lazimpat, Kathmandu).
+Staff-only phone app for **Garden Restaurant** (Lazimpat, Kathmandu).
 
-## Routes
+## Roles
 
-- `/` — brand landing
-- `/dashboard` — staff tables & today’s orders
-- `/demo` — browse → confirm → sample payment (cash / card / QR)
+| Login | Password | Home |
+| --- | --- | --- |
+| `owner` | `owner` | Admin dashboard, payables, expenses, bills, reports, stock, attendance |
+| `staff` | `staff` | Take orders → kitchen, stock, shift, open bills |
+| `kitchen` | `kitchen` | Live board + stock alerts |
 
-Demo copy lives in `src/lib/demo-data.ts` (NPR).
+Owner can open Floor and Kitchen too. Demo data in **NPR**, timezone **Asia/Kathmandu**, synced via `localStorage` (`garden-restaurant-ops-v4`).
 
-## Develop
+## Scripts
 
 ```bash
-npm install
 npm run dev
 npm run build
+npm start
 ```
