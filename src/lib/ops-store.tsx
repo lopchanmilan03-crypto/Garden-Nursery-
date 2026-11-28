@@ -12,12 +12,15 @@ import {
 import {
   OPS_TODAY,
   authRoleToOpsRole,
+  buildDishCostRows,
   createSeedState,
   deductStockForLines,
   expenseHotspots,
   minutesBetween,
+  monthlyTargetProgress,
   orderPayableTotal,
   orderSubtotal,
+  overheadSummary,
   paySplit,
   profitByProduct,
   profitMarginPct,
@@ -32,6 +35,7 @@ import {
   type AuthRole,
   type AuthSession,
   type BillSplit,
+  type CostTargetsConfig,
   type DemoOrder,
   type Expense,
   type ExpenseCategory,
@@ -39,6 +43,7 @@ import {
   type MenuItem,
   type OpsSettings,
   type OpsState,
+  type OverheadLine,
   type PayMethod,
   type RecipeLine,
   type Role,
@@ -47,7 +52,7 @@ import {
   type Vendor,
 } from "@/lib/demo-data";
 
-const STORAGE_KEY = "garden-restaurant-ops-v5";
+const STORAGE_KEY = "garden-restaurant-ops-v6";
 
 type PlaceOrderInput = {
   table: string | null;
@@ -68,6 +73,8 @@ type OpsContextValue = {
   setRole: (role: Role) => void;
   setWaiterName: (name: string) => void;
   updateSettings: (patch: Partial<OpsSettings>) => void;
+  updateCostTargets: (patch: Partial<CostTargetsConfig>) => void;
+  updateMonthlyOverhead: (id: string, patch: Partial<OverheadLine>) => void;
   updateMenuItem: (id: string, patch: Partial<MenuItem>) => void;
   updateRecipe: (menuItemId: string, recipe: RecipeLine[]) => void;
   addMenuItem: (item: MenuItem) => void;
@@ -117,6 +124,9 @@ type OpsContextValue = {
     topSellers: ReturnType<typeof topSellers>;
     expenseHotspots: ReturnType<typeof expenseHotspots>;
     profitByProduct: ReturnType<typeof profitByProduct>;
+    overhead: ReturnType<typeof overheadSummary>;
+    dishCosts: ReturnType<typeof buildDishCostRows>;
+    monthlyTarget: ReturnType<typeof monthlyTargetProgress>;
   };
 };
 
@@ -152,6 +162,16 @@ function mergeState(parsed: Partial<OpsState>): OpsState {
     attendance: parsed.attendance?.length
       ? parsed.attendance
       : seed.attendance,
+    ingredientPacks: parsed.ingredientPacks?.length
+      ? parsed.ingredientPacks
+      : seed.ingredientPacks,
+    dishCostRecipes: parsed.dishCostRecipes?.length
+      ? parsed.dishCostRecipes
+      : seed.dishCostRecipes,
+    monthlyOverheads: parsed.monthlyOverheads?.length
+      ? parsed.monthlyOverheads
+      : seed.monthlyOverheads,
+    costTargets: { ...seed.costTargets, ...(parsed.costTargets ?? {}) },
     settings: { ...seed.settings, ...(parsed.settings ?? {}) },
     session: sanitizeSession(parsed.session),
   };
@@ -270,6 +290,26 @@ export function OpsProvider({ children }: { children: ReactNode }) {
       patch((s) => ({
         ...s,
         settings: { ...s.settings, ...settingsPatch },
+      })),
+    [patch],
+  );
+
+  const updateCostTargets = useCallback(
+    (targetsPatch: Partial<CostTargetsConfig>) =>
+      patch((s) => ({
+        ...s,
+        costTargets: { ...s.costTargets, ...targetsPatch },
+      })),
+    [patch],
+  );
+
+  const updateMonthlyOverhead = useCallback(
+    (id: string, ohPatch: Partial<OverheadLine>) =>
+      patch((s) => ({
+        ...s,
+        monthlyOverheads: s.monthlyOverheads.map((o) =>
+          o.id === id ? { ...o, ...ohPatch } : o,
+        ),
       })),
     [patch],
   );
@@ -839,6 +879,18 @@ export function OpsProvider({ children }: { children: ReactNode }) {
     const criticalStock = state.stock.filter(
       (s) => stockAlertLevel(s) === "critical",
     );
+    const overhead = overheadSummary(
+      state.monthlyOverheads,
+      state.costTargets.monthlyUnitVolume,
+    );
+    const dishCosts = buildDishCostRows(
+      state.menuItems,
+      state.ingredientPacks,
+      state.dishCostRecipes,
+      overhead.perUnit,
+      overhead.monthly,
+    );
+    const monthlyTarget = monthlyTargetProgress(state.costTargets, sale);
     return {
       sale,
       kharcha,
@@ -865,6 +917,9 @@ export function OpsProvider({ children }: { children: ReactNode }) {
         state.expenseCategories,
       ),
       profitByProduct: profitByProduct(state.orders, state.menuItems),
+      overhead,
+      dishCosts,
+      monthlyTarget,
     };
   }, [state]);
 
@@ -876,6 +931,8 @@ export function OpsProvider({ children }: { children: ReactNode }) {
     setRole,
     setWaiterName,
     updateSettings,
+    updateCostTargets,
+    updateMonthlyOverhead,
     updateMenuItem,
     updateRecipe,
     addMenuItem,

@@ -325,8 +325,8 @@ export const seedMenuItems: MenuItem[] = [
     id: "chiya",
     name: "Masala Chiya",
     description: "Cardamom, ginger, black tea — clay cup, unhurried.",
-    price: 80,
-    cost: 18,
+    price: 35,
+    cost: 12,
     category: "drinks",
     popular: true,
     stockSkuId: "sku-tea",
@@ -471,7 +471,7 @@ export const seedOrders: DemoOrder[] = [
       { menuItemId: "dal-bhat", name: "Garden Dal Bhat", qty: 1 },
       { menuItemId: "chiya", name: "Masala Chiya", qty: 1 },
     ],
-    total: 530,
+    total: 485,
     status: "ready",
     placedAt: "14:21",
     type: "dine-in",
@@ -516,7 +516,7 @@ export const seedOrders: DemoOrder[] = [
       { menuItemId: "chiya", name: "Masala Chiya", qty: 2 },
       { menuItemId: "dal-bhat", name: "Garden Dal Bhat", qty: 1 },
     ],
-    total: 790,
+    total: 700,
     status: "paid",
     placedAt: "10:15",
     type: "dine-in",
@@ -555,7 +555,7 @@ export const seedKitchenTickets: KitchenTicket[] = [
     ],
     status: "ready",
     placedAt: "14:21",
-    total: 530,
+    total: 485,
   },
 ];
 
@@ -862,6 +862,45 @@ export type OpsSettings = {
   vatPercent: number;
 };
 
+/** Pack → yield for recipe costing (e.g. milk NPR 100 → 10 cups). */
+export type IngredientPack = {
+  id: string;
+  name: string;
+  packCost: number;
+  packLabel: string;
+  yieldQty: number;
+  yieldLabel: string;
+};
+
+export type DishIngredientUse = {
+  packId: string;
+  /** Yield units used per dish (e.g. 1 cup of milk). */
+  unitsPerDish: number;
+};
+
+export type DishCostRecipe = {
+  menuItemId: string;
+  ingredients: DishIngredientUse[];
+  note?: string;
+};
+
+export type OverheadLine = {
+  id: string;
+  label: string;
+  monthlyAmount: number;
+  kind: "rent" | "salary" | "gas" | "electricity" | "water" | "other";
+};
+
+/** Owner Cost / Targets — monthly goal + volume for overhead share. */
+export type CostTargetsConfig = {
+  monthlySalesTarget: number;
+  /** Assumed dishes/month to spread overhead into cost/unit. */
+  monthlyUnitVolume: number;
+  monthLabel: string;
+  /** MTD sales before today's live tickets (demo baseline). */
+  mtdSalesSeed: number;
+};
+
 export type OpsState = {
   menuItems: MenuItem[];
   tables: TableSeat[];
@@ -875,6 +914,10 @@ export type OpsState = {
   attendance: AttendanceRecord[];
   dayClose: DayClose;
   monthly: MonthlyPoint[];
+  ingredientPacks: IngredientPack[];
+  dishCostRecipes: DishCostRecipe[];
+  monthlyOverheads: OverheadLine[];
+  costTargets: CostTargetsConfig;
   role: Role;
   waiterName: string;
   settings: OpsSettings;
@@ -921,6 +964,139 @@ export function withSeedRecipes(items: MenuItem[]): MenuItem[] {
 
 const defaultSettings: OpsSettings = { vatEnabled: true, vatPercent: 13 };
 
+/** Tea example: milk NPR 100/packet → ~10 cups. */
+export const seedIngredientPacks: IngredientPack[] = [
+  {
+    id: "pack-milk",
+    name: "Milk",
+    packCost: 100,
+    packLabel: "packet",
+    yieldQty: 10,
+    yieldLabel: "cup",
+  },
+  {
+    id: "pack-tea",
+    name: "Chiya leaves",
+    packCost: 450,
+    packLabel: "kg",
+    yieldQty: 180,
+    yieldLabel: "cup",
+  },
+  {
+    id: "pack-coffee",
+    name: "Nepali beans",
+    packCost: 1800,
+    packLabel: "kg",
+    yieldQty: 60,
+    yieldLabel: "cup",
+  },
+  {
+    id: "pack-dal",
+    name: "Masoor dal",
+    packCost: 220,
+    packLabel: "kg",
+    yieldQty: 12,
+    yieldLabel: "plate",
+  },
+  {
+    id: "pack-rice",
+    name: "Rice",
+    packCost: 160,
+    packLabel: "kg",
+    yieldQty: 14,
+    yieldLabel: "plate",
+  },
+  {
+    id: "pack-greens",
+    name: "Garden greens",
+    packCost: 80,
+    packLabel: "bunch",
+    yieldQty: 8,
+    yieldLabel: "plate",
+  },
+  {
+    id: "pack-momo",
+    name: "Momo wrappers + fill",
+    packCost: 240,
+    packLabel: "pack",
+    yieldQty: 4,
+    yieldLabel: "plate",
+  },
+  {
+    id: "pack-cocoa",
+    name: "Brownie batch",
+    packCost: 600,
+    packLabel: "batch",
+    yieldQty: 12,
+    yieldLabel: "slice",
+  },
+  {
+    id: "pack-lemon",
+    name: "Lemon + mint",
+    packCost: 120,
+    packLabel: "kg",
+    yieldQty: 20,
+    yieldLabel: "glass",
+  },
+];
+
+export const seedDishCostRecipes: DishCostRecipe[] = [
+  {
+    menuItemId: "chiya",
+    note: "Milk NPR 100/packet ≈ 10 cups · cup sells ~NPR 35",
+    ingredients: [
+      { packId: "pack-milk", unitsPerDish: 1 },
+      { packId: "pack-tea", unitsPerDish: 1 },
+    ],
+  },
+  {
+    menuItemId: "filter-coffee",
+    note: "Beans pack → cups; true cost includes overhead share",
+    ingredients: [{ packId: "pack-coffee", unitsPerDish: 1 }],
+  },
+  {
+    menuItemId: "dal-bhat",
+    ingredients: [
+      { packId: "pack-dal", unitsPerDish: 1 },
+      { packId: "pack-rice", unitsPerDish: 1 },
+      { packId: "pack-greens", unitsPerDish: 0.5 },
+    ],
+  },
+  {
+    menuItemId: "momos",
+    ingredients: [{ packId: "pack-momo", unitsPerDish: 1 }],
+  },
+  {
+    menuItemId: "salad",
+    ingredients: [{ packId: "pack-greens", unitsPerDish: 1 }],
+  },
+  {
+    menuItemId: "brownie",
+    ingredients: [{ packId: "pack-cocoa", unitsPerDish: 1 }],
+  },
+  {
+    menuItemId: "lemonade",
+    ingredients: [{ packId: "pack-lemon", unitsPerDish: 1 }],
+  },
+];
+
+/** Major monthly overhead — rent, salary, utilities. */
+export const seedMonthlyOverheads: OverheadLine[] = [
+  { id: "oh-rent", label: "Shop rent · Lazimpat", monthlyAmount: 85000, kind: "rent" },
+  { id: "oh-salary", label: "Salaries", monthlyAmount: 155000, kind: "salary" },
+  { id: "oh-gas", label: "Gas (LPG)", monthlyAmount: 12000, kind: "gas" },
+  { id: "oh-elec", label: "Electricity", monthlyAmount: 18000, kind: "electricity" },
+  { id: "oh-water", label: "Water", monthlyAmount: 3500, kind: "water" },
+  { id: "oh-other", label: "Misc / packaging", monthlyAmount: 8000, kind: "other" },
+];
+
+export const seedCostTargets: CostTargetsConfig = {
+  monthlySalesTarget: 450000,
+  monthlyUnitVolume: 9000,
+  monthLabel: "Nov 2026",
+  mtdSalesSeed: 312000,
+};
+
 export function createSeedState(): OpsState {
   const menuItems = withSeedRecipes(structuredClone(seedMenuItems));
   return {
@@ -936,6 +1112,10 @@ export function createSeedState(): OpsState {
     attendance: structuredClone(seedAttendance),
     dayClose: buildSeedDayClose(),
     monthly: structuredClone(seedMonthly),
+    ingredientPacks: structuredClone(seedIngredientPacks),
+    dishCostRecipes: structuredClone(seedDishCostRecipes),
+    monthlyOverheads: structuredClone(seedMonthlyOverheads),
+    costTargets: { ...seedCostTargets },
     role: "owner",
     waiterName: "Sita Gurung",
     settings: { ...defaultSettings },
@@ -1141,6 +1321,124 @@ export type BillBreakdown = {
   tip: number;
   total: number;
 };
+
+export function packUnitCost(pack: IngredientPack): number {
+  if (pack.yieldQty <= 0) return 0;
+  return +(pack.packCost / pack.yieldQty).toFixed(2);
+}
+
+export function overheadSummary(
+  overheads: OverheadLine[],
+  monthlyUnitVolume: number,
+) {
+  const monthly = overheads.reduce((s, o) => s + o.monthlyAmount, 0);
+  const daily = +(monthly / 30).toFixed(2);
+  const perUnit =
+    monthlyUnitVolume > 0 ? +(monthly / monthlyUnitVolume).toFixed(2) : 0;
+  return { monthly, daily, perUnit };
+}
+
+export type DishCostRow = {
+  menuItemId: string;
+  name: string;
+  sellPrice: number;
+  ingredientCost: number;
+  overheadShare: number;
+  trueCost: number;
+  profitPerUnit: number;
+  contributionMarginPct: number;
+  breakEvenUnits: number;
+  cashIfSold: (qty: number) => number;
+  profitIfSold: (qty: number) => number;
+  lines: {
+    packName: string;
+    packCost: number;
+    yieldQty: number;
+    yieldLabel: string;
+    unitsPerDish: number;
+    cost: number;
+  }[];
+  note?: string;
+};
+
+export function buildDishCostRows(
+  menu: MenuItem[],
+  packs: IngredientPack[],
+  recipes: DishCostRecipe[],
+  overheadPerUnit: number,
+  monthlyOverhead: number,
+): DishCostRow[] {
+  const packMap = new Map(packs.map((p) => [p.id, p]));
+  const rows: DishCostRow[] = [];
+  for (const recipe of recipes) {
+    const item = menu.find((m) => m.id === recipe.menuItemId);
+    if (!item) continue;
+    const lines: DishCostRow["lines"] = [];
+    for (const use of recipe.ingredients) {
+      const pack = packMap.get(use.packId);
+      if (!pack) continue;
+      const unit = packUnitCost(pack);
+      lines.push({
+        packName: pack.name,
+        packCost: pack.packCost,
+        yieldQty: pack.yieldQty,
+        yieldLabel: pack.yieldLabel,
+        unitsPerDish: use.unitsPerDish,
+        cost: +(unit * use.unitsPerDish).toFixed(2),
+      });
+    }
+    const ingredientCost = +lines.reduce((s, l) => s + l.cost, 0).toFixed(2);
+    const trueCost = +(ingredientCost + overheadPerUnit).toFixed(2);
+    const profitPerUnit = +(item.price - trueCost).toFixed(2);
+    const contribution =
+      item.price > 0
+        ? +(((item.price - ingredientCost) / item.price) * 100).toFixed(1)
+        : 0;
+    rows.push({
+      menuItemId: item.id,
+      name: item.name,
+      sellPrice: item.price,
+      ingredientCost,
+      overheadShare: overheadPerUnit,
+      trueCost,
+      profitPerUnit,
+      contributionMarginPct: contribution,
+      breakEvenUnits: breakEvenForOverhead(
+        item.price,
+        ingredientCost,
+        monthlyOverhead,
+      ),
+      cashIfSold: (qty: number) => +(item.price * qty).toFixed(2),
+      profitIfSold: (qty: number) => +(profitPerUnit * qty).toFixed(2),
+      lines,
+      note: recipe.note,
+    });
+  }
+  return rows.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/** Units of one dish needed to cover full monthly overhead (contribution margin). */
+export function breakEvenForOverhead(
+  sellPrice: number,
+  ingredientCost: number,
+  monthlyOverhead: number,
+): number {
+  const margin = sellPrice - ingredientCost;
+  if (margin <= 0) return 0;
+  return Math.ceil(monthlyOverhead / margin);
+}
+
+export function monthlyTargetProgress(
+  config: CostTargetsConfig,
+  todaySales: number,
+) {
+  const actual = +(config.mtdSalesSeed + todaySales).toFixed(2);
+  const target = config.monthlySalesTarget;
+  const remaining = Math.max(0, +(target - actual).toFixed(2));
+  const pct =
+    target > 0 ? Math.min(100, +((actual / target) * 100).toFixed(1)) : 0;
+  return { actual, target, remaining, pct, monthLabel: config.monthLabel };
+}
 
 /** Full bill math for cashier — no hand totaling. */
 export function orderBillBreakdown(

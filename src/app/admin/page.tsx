@@ -2,6 +2,10 @@
 
 import { useMemo, useState } from "react";
 import { AuthGate } from "@/components/auth-gate";
+import {
+  CostTargetsDashCard,
+  CostTargetsPanel,
+} from "@/components/cost-targets-panel";
 import { PhoneNav, PhoneShell, type NavTab } from "@/components/phone-nav";
 import {
   OPS_TODAY,
@@ -16,6 +20,7 @@ import { cn, formatNpr } from "@/lib/utils";
 
 const tabs = [
   { id: "dash", label: "Dash" },
+  { id: "cost", label: "Cost" },
   { id: "bills", label: "Bills" },
   { id: "pay", label: "Payables" },
   { id: "exp", label: "Expenses" },
@@ -95,7 +100,9 @@ function AdminInner() {
     },
     {
       label: "More",
-      active: ["bills", "pay", "exp", "staff", "reports", "more"].includes(tab),
+      active: ["bills", "pay", "exp", "cost", "staff", "reports", "more"].includes(
+        tab,
+      ),
       onClick: () => setTab("more"),
     },
     { label: "Out", logout: true },
@@ -197,16 +204,18 @@ function AdminInner() {
                 }}
               />
               <Quick
+                label="Cost / Targets"
+                value={`${metrics.monthlyTarget.pct}%`}
+                onClick={() => setTab("cost")}
+              />
+              <Quick
                 label="Low stock"
                 value={String(metrics.lowStock.length)}
                 onClick={() => setTab("stock")}
               />
-              <Quick
-                label="Reports"
-                value="Top sellers"
-                onClick={() => setTab("reports")}
-              />
             </div>
+
+            <CostTargetsDashCard onOpen={() => setTab("cost")} />
             {!state.dayClose.closed ? (
               <button
                 type="button"
@@ -381,6 +390,8 @@ function AdminInner() {
             </section>
           </>
         )}
+
+        {tab === "cost" && <CostTargetsPanel />}
 
         {tab === "bills" && (
           <>
@@ -854,6 +865,7 @@ function AdminInner() {
             <div className="grid grid-cols-2 gap-2">
               {(
                 [
+                  ["cost", "Cost / Targets"],
                   ["pay", "Payables"],
                   ["exp", "Expenses"],
                   ["staff", "Attendance"],
