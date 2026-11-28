@@ -800,6 +800,24 @@ export const seedMonthly: MonthlyPoint[] = [
   { month: "Nov", sales: 312000, kharcha: 168000, profit: 144000 },
 ];
 
+/** Last 7 days demo series for owner dash charts (Asia/Kathmandu labels). */
+export type DaySeriesPoint = {
+  label: string;
+  date: string;
+  sales: number;
+  expenses: number;
+};
+
+export const seedWeekSeries: DaySeriesPoint[] = [
+  { label: "Sun", date: "2026-11-22", sales: 18500, expenses: 9200 },
+  { label: "Mon", date: "2026-11-23", sales: 21200, expenses: 11800 },
+  { label: "Tue", date: "2026-11-24", sales: 19800, expenses: 10500 },
+  { label: "Wed", date: "2026-11-25", sales: 24100, expenses: 13200 },
+  { label: "Thu", date: "2026-11-26", sales: 22600, expenses: 14100 },
+  { label: "Fri", date: "2026-11-27", sales: 26800, expenses: 15200 },
+  { label: "Sat", date: "2026-11-28", sales: 2068, expenses: 3600 },
+];
+
 export const paymentMethods = [
   { id: "cash" as const, label: "Cash", hint: "Counter cash" },
   { id: "card" as const, label: "Card", hint: "Demo tap · no real charge" },

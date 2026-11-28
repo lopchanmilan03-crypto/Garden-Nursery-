@@ -7,6 +7,7 @@ import {
   OPS_TODAY,
   attendanceLabel,
   majorExpenseCategoryIds,
+  seedWeekSeries,
   stockAlertLevel,
   type PayMethod,
 } from "@/lib/demo-data";
@@ -217,6 +218,165 @@ function AdminInner() {
                 Day closed · {state.dayClose.closedAt}
               </p>
             )}
+
+            <p className="pt-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--garden-leaf)]">
+              At a glance
+            </p>
+
+            <SalesExpenseChart
+              points={seedWeekSeries.map((d, i) =>
+                i === seedWeekSeries.length - 1
+                  ? { ...d, sales: metrics.sale, expenses: metrics.kharcha }
+                  : d,
+              )}
+            />
+
+            <ReportBlock title="Top sellers">
+              {metrics.topSellers.slice(0, 4).map((row, i) => (
+                <RankRow
+                  key={row.menuItemId}
+                  rank={i + 1}
+                  name={row.name}
+                  meta={`×${row.qty}`}
+                  value={formatNpr(row.revenue)}
+                  bar={
+                    metrics.topSellers[0]
+                      ? (row.qty / metrics.topSellers[0].qty) * 100
+                      : 0
+                  }
+                />
+              ))}
+              <button
+                type="button"
+                onClick={() => setTab("reports")}
+                className="w-full pt-1 text-left text-xs font-semibold text-[var(--garden-leaf)]"
+              >
+                Full reports →
+              </button>
+            </ReportBlock>
+
+            <ExpenseBreakdownChart rows={metrics.expenseHotspots.slice(0, 5)} />
+
+            <ReportBlock title="Profit by product">
+              {metrics.profitByProduct.slice(0, 4).map((row, i) => (
+                <RankRow
+                  key={row.menuItemId}
+                  rank={i + 1}
+                  name={row.name}
+                  meta={`${row.marginPct}%`}
+                  value={formatNpr(row.profit)}
+                  bar={
+                    metrics.profitByProduct[0]?.profit
+                      ? (row.profit /
+                          Math.max(metrics.profitByProduct[0].profit, 1)) *
+                        100
+                      : 0
+                  }
+                />
+              ))}
+            </ReportBlock>
+
+            <section className="rounded-2xl bg-white p-4 ring-1 ring-[var(--garden-leaf)]/10">
+              <div className="flex items-center justify-between gap-2">
+                <p className="font-semibold text-[var(--garden-deep)]">
+                  Low stock
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setTab("stock")}
+                  className="text-xs font-semibold text-[var(--garden-leaf)]"
+                >
+                  Stock →
+                </button>
+              </div>
+              {metrics.lowStock.length === 0 ? (
+                <p className="mt-3 text-sm text-[var(--garden-ink)]/50">
+                  All items above threshold
+                </p>
+              ) : (
+                <ul className="mt-3 space-y-2">
+                  {metrics.lowStock.slice(0, 4).map((row) => {
+                    const level = stockAlertLevel(row);
+                    return (
+                      <li
+                        key={row.id}
+                        className="flex items-center justify-between gap-2 text-sm"
+                      >
+                        <span className="min-w-0 truncate font-medium">
+                          {row.name}
+                        </span>
+                        <span
+                          className={cn(
+                            "shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold",
+                            level === "critical"
+                              ? "bg-red-100 text-red-900"
+                              : "bg-amber-100 text-amber-950",
+                          )}
+                        >
+                          {row.qty} {row.unit}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </section>
+
+            <section className="rounded-2xl bg-white p-4 ring-1 ring-[var(--garden-leaf)]/10">
+              <div className="flex items-center justify-between gap-2">
+                <p className="font-semibold text-[var(--garden-deep)]">
+                  Pay soon
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setTab("pay")}
+                  className="text-xs font-semibold text-[var(--garden-leaf)]"
+                >
+                  Payables →
+                </button>
+              </div>
+              <ul className="mt-3 space-y-2">
+                {[
+                  ...state.vendors
+                    .filter((v) => v.dues > 0)
+                    .map((v) => ({
+                      id: v.id,
+                      name: v.name,
+                      amount: v.dues,
+                      meta: v.category,
+                    })),
+                  ...state.expenses
+                    .filter((e) => !e.paid && !e.vendorId)
+                    .map((e) => ({
+                      id: e.id,
+                      name: e.label,
+                      amount: e.amount,
+                      meta:
+                        state.expenseCategories.find(
+                          (c) => c.id === e.categoryId,
+                        )?.name ?? e.categoryId,
+                    })),
+                ]
+                  .sort((a, b) => b.amount - a.amount)
+                  .slice(0, 4)
+                  .map((row) => (
+                    <li
+                      key={row.id}
+                      className="flex items-center justify-between gap-2 text-sm"
+                    >
+                      <span className="min-w-0 truncate">
+                        <span className="font-medium">{row.name}</span>
+                        <span className="ml-1 text-[var(--garden-ink)]/45">
+                          {row.meta}
+                        </span>
+                      </span>
+                      <span className="shrink-0 font-semibold">
+                        {formatNpr(row.amount)}
+                      </span>
+                    </li>
+                  ))}
+              </ul>
+            </section>
           </>
         )}
 
@@ -875,5 +1035,126 @@ function RankRow({
         />
       </div>
     </div>
+  );
+}
+
+function SalesExpenseChart({
+  points,
+}: {
+  points: { label: string; sales: number; expenses: number }[];
+}) {
+  const max = Math.max(
+    ...points.flatMap((p) => [p.sales, p.expenses]),
+    1,
+  );
+  return (
+    <section className="rounded-2xl bg-white p-4 ring-1 ring-[var(--garden-leaf)]/10">
+      <div className="flex items-center justify-between gap-2">
+        <p className="font-semibold text-[var(--garden-deep)]">
+          Sales vs expenses
+        </p>
+        <p className="text-[11px] text-[var(--garden-ink)]/45">7 days</p>
+      </div>
+      <div className="mt-2 flex items-center gap-3 text-[11px] font-medium">
+        <span className="inline-flex items-center gap-1.5 text-[var(--garden-deep)]">
+          <span className="h-2 w-2 rounded-full bg-[var(--garden-deep)]" />
+          Sales
+        </span>
+        <span className="inline-flex items-center gap-1.5 text-[var(--garden-moss)]">
+          <span className="h-2 w-2 rounded-full bg-[var(--garden-moss)]" />
+          Expenses
+        </span>
+      </div>
+      <div className="mt-4 flex h-36 items-end justify-between gap-1.5">
+        {points.map((p) => (
+          <div
+            key={p.label}
+            className="flex min-w-0 flex-1 flex-col items-center gap-1"
+          >
+            <div className="flex h-28 w-full items-end justify-center gap-0.5">
+              <div
+                className="w-[42%] rounded-t-md bg-[var(--garden-deep)] transition-all"
+                style={{
+                  height: `${Math.max(4, (p.sales / max) * 100)}%`,
+                }}
+                title={`Sales ${formatNpr(p.sales)}`}
+              />
+              <div
+                className="w-[42%] rounded-t-md bg-[var(--garden-moss)]/80 transition-all"
+                style={{
+                  height: `${Math.max(4, (p.expenses / max) * 100)}%`,
+                }}
+                title={`Expenses ${formatNpr(p.expenses)}`}
+              />
+            </div>
+            <span className="text-[10px] font-medium text-[var(--garden-ink)]/50">
+              {p.label}
+            </span>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function ExpenseBreakdownChart({
+  rows,
+}: {
+  rows: { categoryId: string; name: string; amount: number }[];
+}) {
+  const max = rows[0]?.amount || 1;
+  const total = rows.reduce((s, r) => s + r.amount, 0) || 1;
+  return (
+    <section className="rounded-2xl bg-white p-4 ring-1 ring-[var(--garden-leaf)]/10">
+      <p className="font-semibold text-[var(--garden-deep)]">
+        Expense breakdown
+      </p>
+      <div className="mt-3 flex h-3 overflow-hidden rounded-full bg-[var(--garden-fog)]">
+        {rows.map((row, i) => {
+          const tones = [
+            "bg-[var(--garden-deep)]",
+            "bg-[var(--garden-leaf)]",
+            "bg-[var(--garden-moss)]",
+            "bg-[var(--garden-gold)]",
+            "bg-[var(--garden-fog)]",
+          ];
+          return (
+            <div
+              key={row.categoryId}
+              className={cn("h-full", tones[i % tones.length])}
+              style={{ width: `${(row.amount / total) * 100}%` }}
+              title={`${row.name} ${formatNpr(row.amount)}`}
+            />
+          );
+        })}
+      </div>
+      <ul className="mt-3 space-y-2.5">
+        {rows.map((row, i) => (
+          <li key={row.categoryId}>
+            <div className="flex items-center justify-between gap-2 text-sm">
+              <span className="min-w-0 truncate font-medium">{row.name}</span>
+              <span className="shrink-0 font-semibold">
+                {formatNpr(row.amount)}
+              </span>
+            </div>
+            <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-[var(--garden-fog)]">
+              <div
+                className={cn(
+                  "h-full rounded-full",
+                  i === 0
+                    ? "bg-[var(--garden-deep)]"
+                    : i === 1
+                      ? "bg-[var(--garden-leaf)]"
+                      : "bg-[var(--garden-moss)]",
+                )}
+                style={{
+                  width: `${Math.min(100, Math.max(6, (row.amount / max) * 100))}%`,
+                }}
+              />
+            </div>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
