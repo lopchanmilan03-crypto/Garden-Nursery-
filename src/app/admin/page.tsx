@@ -55,6 +55,7 @@ function AdminInner() {
     clockIn,
     clockOut,
     closeDay,
+    reopenDay,
     resetDemo,
     ready,
   } = useOps();
@@ -219,16 +220,96 @@ function AdminInner() {
             {!state.dayClose.closed ? (
               <button
                 type="button"
-                onClick={closeDay}
+                onClick={() => {
+                  if (
+                    typeof window !== "undefined" &&
+                    !window.confirm(
+                      "Close today and save sales, expenses, and open bills to day history?",
+                    )
+                  ) {
+                    return;
+                  }
+                  closeDay();
+                }}
                 className="flex min-h-14 w-full items-center justify-center rounded-2xl bg-[var(--garden-deep)] text-base font-semibold text-white"
               >
                 Close day
               </button>
             ) : (
-              <p className="rounded-2xl bg-emerald-50 px-4 py-4 text-center text-sm text-emerald-950">
-                Day closed · {state.dayClose.closedAt}
-              </p>
+              <div className="rounded-2xl bg-emerald-50 px-4 py-4 text-emerald-950 ring-1 ring-emerald-200/80">
+                <p className="text-center text-sm font-medium">
+                  Day closed · {state.dayClose.closedAt}
+                  {state.dayClose.autoClosed ? " · auto" : ""}
+                </p>
+                <p className="mt-1 text-center text-xs text-emerald-900/70">
+                  Accidental? Reopen clears today’s history snapshot.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (
+                      typeof window !== "undefined" &&
+                      !window.confirm(
+                        "Reopen today? This undoes the close and removes today’s day record.",
+                      )
+                    ) {
+                      return;
+                    }
+                    reopenDay();
+                  }}
+                  className="mt-3 flex min-h-12 w-full items-center justify-center rounded-2xl bg-[var(--garden-deep)] text-sm font-semibold text-white"
+                >
+                  Undo · Reopen day
+                </button>
+              </div>
             )}
+
+            <section className="rounded-2xl bg-white p-4 ring-1 ring-[var(--garden-leaf)]/10">
+              <p className="font-semibold text-[var(--garden-deep)]">
+                Past days
+              </p>
+              <p className="mt-1 text-xs text-[var(--garden-ink)]/50">
+                Closed-day snapshots · Asia/Kathmandu
+              </p>
+              {state.dayHistory.length === 0 ? (
+                <p className="mt-3 text-sm text-[var(--garden-ink)]/50">
+                  No closed days yet
+                </p>
+              ) : (
+                <ul className="mt-3 space-y-2">
+                  {state.dayHistory.slice(0, 5).map((day) => (
+                    <li
+                      key={day.date}
+                      className="rounded-xl bg-[var(--garden-fog)]/70 px-3 py-2.5 text-sm"
+                    >
+                      <div className="flex items-baseline justify-between gap-2">
+                        <span className="font-medium text-[var(--garden-deep)]">
+                          {day.date}
+                        </span>
+                        <span className="tabular-nums font-semibold">
+                          {formatNpr(day.sales)}
+                        </span>
+                      </div>
+                      <p className="mt-0.5 text-[11px] text-[var(--garden-ink)]/50">
+                        Closed {day.closedAt}
+                        {day.auto ? " · auto" : ""} · exp{" "}
+                        {formatNpr(day.expenses)} · profit{" "}
+                        {formatNpr(day.profit)} · {day.openBills} open
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {state.dayHistory.length > 5 ? (
+                <button
+                  type="button"
+                  onClick={() => setTab("more")}
+                  className="mt-2 text-xs font-semibold text-[var(--garden-leaf)]"
+                >
+                  All day history →
+                </button>
+              ) : null}
+            </section>
 
             <p className="pt-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--garden-leaf)]">
               At a glance
@@ -895,6 +976,64 @@ function AdminInner() {
                 className="h-5 w-5"
               />
             </label>
+            <div className="rounded-2xl bg-white p-4 ring-1 ring-[var(--garden-leaf)]/10">
+              <p className="font-semibold text-[var(--garden-deep)]">
+                Auto day-close
+              </p>
+              <p className="mt-1 text-xs text-[var(--garden-ink)]/50">
+                Asia/Kathmandu · snapshots sales, expenses, profit, open bills
+              </p>
+              <label className="mt-3 block text-[11px] text-[var(--garden-ink)]/50">
+                Closing hour (0 = midnight)
+                <select
+                  className="mt-1 h-11 w-full rounded-xl border border-[var(--garden-leaf)]/15 px-3 text-sm font-semibold text-[var(--garden-deep)]"
+                  value={state.settings.dayClosingHour ?? 0}
+                  onChange={(e) =>
+                    updateSettings({
+                      dayClosingHour: Number(e.target.value),
+                    })
+                  }
+                >
+                  {Array.from({ length: 24 }, (_, h) => (
+                    <option key={h} value={h}>
+                      {h === 0
+                        ? "00:00 · midnight"
+                        : `${String(h).padStart(2, "0")}:00`}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <div className="rounded-2xl bg-white p-4 ring-1 ring-[var(--garden-leaf)]/10">
+              <p className="font-semibold text-[var(--garden-deep)]">
+                Day history
+              </p>
+              {state.dayHistory.length === 0 ? (
+                <p className="mt-3 text-sm text-[var(--garden-ink)]/50">
+                  No closed days yet
+                </p>
+              ) : (
+                <ul className="mt-3 space-y-2">
+                  {state.dayHistory.map((day) => (
+                    <li
+                      key={day.date}
+                      className="rounded-xl bg-[var(--garden-fog)]/70 px-3 py-2.5 text-sm"
+                    >
+                      <div className="flex justify-between gap-2 font-medium">
+                        <span>{day.date}</span>
+                        <span>{formatNpr(day.sales)}</span>
+                      </div>
+                      <p className="mt-0.5 text-[11px] text-[var(--garden-ink)]/50">
+                        {day.closedAt}
+                        {day.auto ? " · auto" : ""} · exp{" "}
+                        {formatNpr(day.expenses)} · profit{" "}
+                        {formatNpr(day.profit)} · open {day.openBills}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
             <div className="rounded-2xl bg-white p-4 ring-1 ring-[var(--garden-leaf)]/10">
               <p className="font-semibold text-[var(--garden-deep)]">
                 Menu prices

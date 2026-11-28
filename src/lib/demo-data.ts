@@ -186,6 +186,22 @@ export type DayClose = {
   expenses: number;
   closed: boolean;
   closedAt?: string;
+  /** Set when closed by auto end-of-day. */
+  autoClosed?: boolean;
+};
+
+/** Persisted closed-day snapshot for Owner history. */
+export type DayRecord = {
+  date: string;
+  closedAt: string;
+  sales: number;
+  expenses: number;
+  profit: number;
+  cash: number;
+  card: number;
+  upi: number;
+  openBills: number;
+  auto?: boolean;
 };
 
 export type MonthlyPoint = {
@@ -860,6 +876,11 @@ export function dashboardStats() {
 export type OpsSettings = {
   vatEnabled: boolean;
   vatPercent: number;
+  /**
+   * Hour (0–23) in Asia/Kathmandu when the day auto-closes.
+   * 0 = midnight (end of calendar day). Optional for older saved state.
+   */
+  dayClosingHour?: number;
 };
 
 /** Pack → yield for recipe costing (e.g. milk NPR 100 → 10 cups). */
@@ -920,6 +941,7 @@ export type OpsState = {
   staff: StaffMember[];
   attendance: AttendanceRecord[];
   dayClose: DayClose;
+  dayHistory: DayRecord[];
   monthly: MonthlyPoint[];
   ingredientPacks: IngredientPack[];
   dishCostRecipes: DishCostRecipe[];
@@ -969,7 +991,120 @@ export function withSeedRecipes(items: MenuItem[]): MenuItem[] {
   });
 }
 
-const defaultSettings: OpsSettings = { vatEnabled: true, vatPercent: 13 };
+const defaultSettings: OpsSettings = {
+  vatEnabled: true,
+  vatPercent: 13,
+  dayClosingHour: 0,
+};
+
+/** Demo past closed days (Nepal time). */
+export const seedDayHistory: DayRecord[] = [
+  {
+    date: "2026-11-27",
+    closedAt: "22:01",
+    sales: 26800,
+    expenses: 15200,
+    profit: 11600,
+    cash: 14200,
+    card: 4600,
+    upi: 8000,
+    openBills: 0,
+    auto: true,
+  },
+  {
+    date: "2026-11-26",
+    closedAt: "22:00",
+    sales: 22600,
+    expenses: 14100,
+    profit: 8500,
+    cash: 11800,
+    card: 3200,
+    upi: 7600,
+    openBills: 1,
+    auto: true,
+  },
+  {
+    date: "2026-11-25",
+    closedAt: "21:58",
+    sales: 24100,
+    expenses: 13200,
+    profit: 10900,
+    cash: 15100,
+    card: 2800,
+    upi: 6200,
+    openBills: 0,
+  },
+];
+
+/** Asia/Kathmandu calendar date YYYY-MM-DD. */
+export function kathmanduDate(d = new Date()): string {
+  return d.toLocaleDateString("en-CA", { timeZone: "Asia/Kathmandu" });
+}
+
+/** Asia/Kathmandu hour 0–23. */
+export function kathmanduHour(d = new Date()): number {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Kathmandu",
+    hour: "2-digit",
+    hour12: false,
+  }).formatToParts(d);
+  return Number(parts.find((p) => p.type === "hour")?.value ?? "0");
+}
+
+export function kathmanduTime(d = new Date()): string {
+  return d.toLocaleTimeString("en-NP", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: "Asia/Kathmandu",
+  });
+}
+
+export function buildDayRecord(
+  state: Pick<
+    OpsState,
+    "orders" | "menuItems" | "settings" | "expenses" | "dayClose"
+  >,
+  opts?: { auto?: boolean; closedAt?: string },
+): DayRecord {
+  const split = paySplit(state.orders, state.menuItems, state.settings);
+  const sales = todaySale(state.orders, state.menuItems, state.settings);
+  const expenses = todayKharcha(state.expenses, state.dayClose.date);
+  const openBills = state.orders.filter(
+    (o) => o.status !== "paid" && o.status !== "cancelled",
+  ).length;
+  return {
+    date: state.dayClose.date,
+    closedAt: opts?.closedAt ?? kathmanduTime(),
+    sales: +sales.toFixed(2),
+    expenses: +expenses.toFixed(2),
+    profit: +(sales - expenses).toFixed(2),
+    cash: +split.cash.toFixed(2),
+    card: +split.card.toFixed(2),
+    upi: +split.upi.toFixed(2),
+    openBills,
+    auto: opts?.auto,
+  };
+}
+
+export function upsertDayHistory(
+  history: DayRecord[],
+  record: DayRecord,
+): DayRecord[] {
+  const rest = history.filter((h) => h.date !== record.date);
+  return [record, ...rest].sort((a, b) => b.date.localeCompare(a.date));
+}
+
+export function freshDayClose(date: string): DayClose {
+  return {
+    date,
+    cash: 0,
+    card: 0,
+    upi: 0,
+    expenses: 0,
+    closed: false,
+  };
+}
 
 /** Tea example: milk NPR 100/packet → ~10 cups. */
 export const seedIngredientPacks: IngredientPack[] = [
@@ -1167,6 +1302,7 @@ export function createSeedState(): OpsState {
     staff: structuredClone(seedStaff),
     attendance: structuredClone(seedAttendance),
     dayClose: buildSeedDayClose(),
+    dayHistory: structuredClone(seedDayHistory),
     monthly: structuredClone(seedMonthly),
     ingredientPacks: structuredClone(seedIngredientPacks),
     dishCostRecipes: structuredClone(seedDishCostRecipes),

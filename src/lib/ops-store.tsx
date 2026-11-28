@@ -35,8 +35,15 @@ import {
   type AuthRole,
   type AuthSession,
   type BillSplit,
+  buildDayRecord,
   createCostingForNewDish,
+  freshDayClose,
+  kathmanduDate,
+  kathmanduHour,
+  kathmanduTime,
+  upsertDayHistory,
   type CostTargetsConfig,
+  type DayRecord,
   type DemoOrder,
   type DishCostRecipe,
   type DishIngredientUse,
@@ -56,7 +63,7 @@ import {
   type Vendor,
 } from "@/lib/demo-data";
 
-const STORAGE_KEY = "garden-restaurant-ops-v7";
+const STORAGE_KEY = "garden-restaurant-ops-v8";
 
 type PlaceOrderInput = {
   table: string | null;
@@ -123,7 +130,7 @@ type OpsContextValue = {
   paySplitPart: (orderId: string, splitId: string, method: PayMethod) => void;
   clockIn: (staffId: string) => void;
   clockOut: (staffId: string) => void;
-  closeDay: () => void;
+  closeDay: (opts?: { auto?: boolean }) => void;
   reopenDay: () => void;
   resetDemo: () => void;
   payableTotal: (order: DemoOrder) => number;
@@ -191,7 +198,15 @@ function mergeState(parsed: Partial<OpsState>): OpsState {
       ? parsed.monthlyOverheads
       : seed.monthlyOverheads,
     costTargets: { ...seed.costTargets, ...(parsed.costTargets ?? {}) },
-    settings: { ...seed.settings, ...(parsed.settings ?? {}) },
+    dayHistory: parsed.dayHistory?.length
+      ? parsed.dayHistory
+      : seed.dayHistory,
+    settings: {
+      ...seed.settings,
+      ...(parsed.settings ?? {}),
+      dayClosingHour:
+        parsed.settings?.dayClosingHour ?? seed.settings.dayClosingHour,
+    },
     session: sanitizeSession(parsed.session),
   };
 }
@@ -242,6 +257,76 @@ export function OpsProvider({ children }: { children: ReactNode }) {
     window.addEventListener("storage", onStorage);
     return () => window.removeEventListener("storage", onStorage);
   }, []);
+
+  /** Auto day-close + roll forward in Asia/Kathmandu. */
+  useEffect(() => {
+    if (!ready) return;
+
+    function applyAutoClose(prev: OpsState): OpsState {
+      const today = kathmanduDate();
+      const hour = kathmanduHour();
+      const closingHour = prev.settings.dayClosingHour ?? 0;
+      let next = prev;
+
+      // Past calendar day still open → snapshot & roll to today
+      if (next.dayClose.date < today && !next.dayClose.closed) {
+        const record = buildDayRecord(next, {
+          auto: true,
+          closedAt: "23:59",
+        });
+        next = {
+          ...next,
+          dayHistory: upsertDayHistory(next.dayHistory, record),
+          dayClose: freshDayClose(today),
+        };
+      } else if (next.dayClose.date < today && next.dayClose.closed) {
+        next = { ...next, dayClose: freshDayClose(today) };
+      }
+
+      // Same day past closing hour → close (midnight = hour 0 next day handled above)
+      if (
+        next.dayClose.date === today &&
+        !next.dayClose.closed &&
+        closingHour > 0 &&
+        hour >= closingHour
+      ) {
+        const record = buildDayRecord(next, {
+          auto: true,
+          closedAt: kathmanduTime(),
+        });
+        next = {
+          ...next,
+          dayHistory: upsertDayHistory(next.dayHistory, record),
+          dayClose: {
+            ...next.dayClose,
+            cash: record.cash,
+            card: record.card,
+            upi: record.upi,
+            expenses: record.expenses,
+            closed: true,
+            closedAt: record.closedAt,
+            autoClosed: true,
+          },
+        };
+      }
+
+      return next;
+    }
+
+    setState((prev) => {
+      const next = applyAutoClose(prev);
+      return next === prev ? prev : next;
+    });
+
+    const id = window.setInterval(() => {
+      setState((prev) => {
+        const next = applyAutoClose(prev);
+        return next === prev ? prev : next;
+      });
+    }, 60_000);
+
+    return () => window.clearInterval(id);
+  }, [ready]);
 
   const patch = useCallback((fn: (prev: OpsState) => OpsState) => {
     setState(fn);
@@ -974,18 +1059,25 @@ export function OpsProvider({ children }: { children: ReactNode }) {
   );
 
   const closeDay = useCallback(
-    () =>
+    (opts?: { auto?: boolean }) =>
       patch((s) => {
-        const split = paySplit(s.orders, s.menuItems, s.settings);
-        const expenses = todayKharcha(s.expenses, s.dayClose.date);
+        if (s.dayClose.closed) return s;
+        const record = buildDayRecord(s, {
+          auto: opts?.auto,
+          closedAt: kathmanduTime(),
+        });
         return {
           ...s,
+          dayHistory: upsertDayHistory(s.dayHistory, record),
           dayClose: {
             ...s.dayClose,
-            ...split,
-            expenses,
+            cash: record.cash,
+            card: record.card,
+            upi: record.upi,
+            expenses: record.expenses,
             closed: true,
-            closedAt: nowTime(),
+            closedAt: record.closedAt,
+            autoClosed: !!opts?.auto,
           },
         };
       }),
@@ -994,10 +1086,20 @@ export function OpsProvider({ children }: { children: ReactNode }) {
 
   const reopenDay = useCallback(
     () =>
-      patch((s) => ({
-        ...s,
-        dayClose: { ...s.dayClose, closed: false, closedAt: undefined },
-      })),
+      patch((s) => {
+        if (!s.dayClose.closed) return s;
+        const date = s.dayClose.date;
+        return {
+          ...s,
+          dayHistory: s.dayHistory.filter((h) => h.date !== date),
+          dayClose: {
+            ...s.dayClose,
+            closed: false,
+            closedAt: undefined,
+            autoClosed: undefined,
+          },
+        };
+      }),
     [patch],
   );
 
