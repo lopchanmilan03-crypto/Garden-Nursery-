@@ -96,6 +96,11 @@ function EmployeeInner() {
       onClick: () => setTab("order"),
     },
     {
+      label: "Cashier",
+      href: "/cashier",
+      active: false,
+    },
+    {
       label: "Stock",
       active: tab === "stock",
       onClick: () => setTab("stock"),
@@ -104,11 +109,6 @@ function EmployeeInner() {
       label: "Shift",
       active: tab === "shift",
       onClick: () => setTab("shift"),
-    },
-    {
-      label: "Bills",
-      active: tab === "bills",
-      onClick: () => setTab("bills"),
     },
     { label: "Out", logout: true },
   ];

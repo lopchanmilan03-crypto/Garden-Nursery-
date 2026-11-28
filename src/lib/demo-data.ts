@@ -22,8 +22,8 @@ export type MenuItem = {
   image?: string;
 };
 
-/** App login role (maps staff floor → "staff"). */
-export type AuthRole = "owner" | "staff" | "kitchen";
+/** App login role (maps floor → "staff"). */
+export type AuthRole = "owner" | "staff" | "kitchen" | "cashier";
 
 export type AuthSession = {
   role: AuthRole;
@@ -404,7 +404,7 @@ export const roleProfiles: RoleProfile[] = [
     role: "staff",
     staffId: "st-sita",
     displayName: "Sita Gurung",
-    hint: "Orders, shift, open bills",
+    hint: "Orders, shift, bills",
   },
   {
     role: "kitchen",
@@ -412,12 +412,23 @@ export const roleProfiles: RoleProfile[] = [
     displayName: "Bikash Lama",
     hint: "Live board & stock alerts",
   },
+  {
+    role: "cashier",
+    staffId: "st-cash",
+    displayName: "Maya Tamang",
+    hint: "Auto bills · settle tables",
+  },
 ];
 
 export const SESSION_COOKIE = "garden-ops-role";
 
 export function isAuthRole(value: string): value is AuthRole {
-  return value === "owner" || value === "staff" || value === "kitchen";
+  return (
+    value === "owner" ||
+    value === "staff" ||
+    value === "kitchen" ||
+    value === "cashier"
+  );
 }
 
 export const OPS_TODAY = "2026-11-28";
@@ -935,6 +946,7 @@ export function createSeedState(): OpsState {
 export function authRoleToOpsRole(role: AuthRole): Role {
   if (role === "staff") return "waiter";
   if (role === "kitchen") return "kitchen";
+  if (role === "cashier") return "cashier";
   return "owner";
 }
 
@@ -953,6 +965,9 @@ export function canAccessPath(role: AuthRole, pathname: string): boolean {
   if (pathname.startsWith("/admin") || pathname.startsWith("/dashboard")) {
     return false;
   }
+  if (pathname.startsWith("/cashier")) {
+    return role === "cashier" || role === "staff";
+  }
   if (
     pathname.startsWith("/employee") ||
     pathname.startsWith("/order") ||
@@ -961,7 +976,7 @@ export function canAccessPath(role: AuthRole, pathname: string): boolean {
     pathname.startsWith("/demo") ||
     pathname.startsWith("/table")
   ) {
-    return role === "staff";
+    return role === "staff" || role === "cashier";
   }
   if (pathname.startsWith("/kitchen")) {
     return role === "kitchen";
@@ -1113,13 +1128,78 @@ export function orderPayableTotal(
   menu: MenuItem[],
   settings: OpsSettings,
 ): number {
-  if (order.status === "cancelled") return 0;
-  const sub = orderSubtotal(order, menu);
-  const afterDiscount = sub * (1 - (order.discountPct ?? 0) / 100);
-  const vat = settings.vatEnabled
-    ? afterDiscount * (settings.vatPercent / 100)
+  return orderBillBreakdown(order, menu, settings).total;
+}
+
+export type BillBreakdown = {
+  lines: { name: string; qty: number; unitPrice: number; lineTotal: number }[];
+  subtotal: number;
+  discountPct: number;
+  discountAmount: number;
+  vatPercent: number;
+  vatAmount: number;
+  tip: number;
+  total: number;
+};
+
+/** Full bill math for cashier — no hand totaling. */
+export function orderBillBreakdown(
+  order: DemoOrder,
+  menu: MenuItem[],
+  settings: OpsSettings,
+): BillBreakdown {
+  if (order.status === "cancelled") {
+    return {
+      lines: [],
+      subtotal: 0,
+      discountPct: 0,
+      discountAmount: 0,
+      vatPercent: settings.vatPercent,
+      vatAmount: 0,
+      tip: 0,
+      total: 0,
+    };
+  }
+  const lines = activeLines(order).map((l) => {
+    const unitPrice = menu.find((m) => m.id === l.menuItemId)?.price ?? 0;
+    return {
+      name: l.name,
+      qty: l.qty,
+      unitPrice,
+      lineTotal: +(unitPrice * l.qty).toFixed(2),
+    };
+  });
+  const subtotal = lines.length
+    ? lines.reduce((s, l) => s + l.lineTotal, 0)
+    : order.total;
+  const discountPct = order.discountPct ?? 0;
+  const discountAmount = +((subtotal * discountPct) / 100).toFixed(2);
+  const afterDiscount = subtotal - discountAmount;
+  const vatPercent = settings.vatEnabled ? settings.vatPercent : 0;
+  const vatAmount = settings.vatEnabled
+    ? +((afterDiscount * settings.vatPercent) / 100).toFixed(2)
     : 0;
-  return +(afterDiscount + vat + (order.tip ?? 0)).toFixed(2);
+  const tip = order.tip ?? 0;
+  return {
+    lines,
+    subtotal: +subtotal.toFixed(2),
+    discountPct,
+    discountAmount,
+    vatPercent,
+    vatAmount,
+    tip,
+    total: +(afterDiscount + vatAmount + tip).toFixed(2),
+  };
+}
+
+export function kitchenStatusLabel(status: DemoOrder["status"]): string {
+  if (status === "new") return "Sent to kitchen";
+  if (status === "preparing") return "Cooking";
+  if (status === "ready") return "Ready to serve";
+  if (status === "served") return "Served — ready to bill";
+  if (status === "paid") return "Paid";
+  if (status === "cancelled") return "Void";
+  return status;
 }
 
 function stockUsageForLines(

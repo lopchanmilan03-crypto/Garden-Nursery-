@@ -32,6 +32,8 @@ export const config = {
     "/dashboard/:path*",
     "/employee",
     "/employee/:path*",
+    "/cashier",
+    "/cashier/:path*",
     "/kitchen",
     "/kitchen/:path*",
     "/order",

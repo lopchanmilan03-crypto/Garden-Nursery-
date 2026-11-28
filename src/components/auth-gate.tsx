@@ -28,9 +28,11 @@ export function AuthGate({
       const home =
         session.role === "kitchen"
           ? "/kitchen"
-          : session.role === "staff"
-            ? "/employee"
-            : "/admin";
+          : session.role === "cashier"
+            ? "/cashier"
+            : session.role === "staff"
+              ? "/employee"
+              : "/admin";
       router.replace(home);
     }
   }, [ready, session, allow, router]);

@@ -84,9 +84,9 @@ function AdminInner() {
       onClick: () => setTab("dash"),
     },
     {
-      label: "Bills",
-      active: tab === "bills",
-      onClick: () => setTab("bills"),
+      label: "Cashier",
+      href: "/cashier",
+      active: false,
     },
     {
       label: "Stock",
@@ -95,7 +95,7 @@ function AdminInner() {
     },
     {
       label: "More",
-      active: ["pay", "exp", "staff", "reports", "more"].includes(tab),
+      active: ["bills", "pay", "exp", "staff", "reports", "more"].includes(tab),
       onClick: () => setTab("more"),
     },
     { label: "Out", logout: true },
@@ -190,9 +190,11 @@ function AdminInner() {
                 onClick={() => setTab("pay")}
               />
               <Quick
-                label="Open bills"
-                value={String(openBills.length)}
-                onClick={() => setTab("bills")}
+                label="Cashier"
+                value={`${openBills.length} open`}
+                onClick={() => {
+                  window.location.assign("/cashier");
+                }}
               />
               <Quick
                 label="Low stock"

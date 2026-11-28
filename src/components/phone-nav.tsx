@@ -26,6 +26,21 @@ function defaultTabs(role: AuthRole | null, pathname: string): NavTab[] {
       { label: "Out", logout: true },
     ];
   }
+  if (role === "cashier") {
+    return [
+      {
+        href: "/cashier",
+        label: "Cashier",
+        active: pathname.startsWith("/cashier"),
+      },
+      {
+        href: "/employee",
+        label: "Order",
+        active: pathname.startsWith("/employee"),
+      },
+      { label: "Out", logout: true },
+    ];
+  }
   if (role === "staff") {
     return [
       {
@@ -36,8 +51,12 @@ function defaultTabs(role: AuthRole | null, pathname: string): NavTab[] {
           pathname.startsWith("/order") ||
           pathname.startsWith("/staff"),
       },
+      {
+        href: "/cashier",
+        label: "Cashier",
+        active: pathname.startsWith("/cashier"),
+      },
       { href: "/employee", label: "Stock", active: false },
-      { href: "/employee", label: "Shift", active: false },
       { label: "Out", logout: true },
     ];
   }
@@ -46,6 +65,11 @@ function defaultTabs(role: AuthRole | null, pathname: string): NavTab[] {
       href: "/admin",
       label: "Dash",
       active: pathname.startsWith("/admin") || pathname.startsWith("/dashboard"),
+    },
+    {
+      href: "/cashier",
+      label: "Cashier",
+      active: pathname.startsWith("/cashier"),
     },
     {
       href: "/employee",
@@ -60,11 +84,7 @@ function defaultTabs(role: AuthRole | null, pathname: string): NavTab[] {
       label: "Kitchen",
       active: pathname.startsWith("/kitchen"),
     },
-    {
-      href: "/admin",
-      label: "More",
-      active: false,
-    },
+    { label: "Out", logout: true },
   ];
 }
 

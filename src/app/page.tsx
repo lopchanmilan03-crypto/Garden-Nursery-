@@ -10,7 +10,25 @@ const roleHome = {
   owner: "/admin",
   staff: "/employee",
   kitchen: "/kitchen",
+  cashier: "/cashier",
 } as const;
+
+const tones: Record<
+  AuthRole,
+  "gold" | "deep" | "leaf" | "moss"
+> = {
+  owner: "gold",
+  staff: "deep",
+  kitchen: "leaf",
+  cashier: "moss",
+};
+
+const labels: Record<AuthRole, string> = {
+  owner: "Owner",
+  staff: "Staff",
+  kitchen: "Kitchen",
+  cashier: "Cashier",
+};
 
 export default function LoginPage() {
   const { enterAs, state, ready } = useOps();
@@ -18,7 +36,6 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const navigating = useRef(false);
 
-  // Resume prior session with a full navigation so cookies + storage stay aligned.
   useEffect(() => {
     if (!ready || !state.session || navigating.current) return;
     navigating.current = true;
@@ -41,8 +58,6 @@ export default function LoginPage() {
         setError("Could not start session — try again");
         return;
       }
-      // Hard navigate so the next document request includes the role cookie
-      // and localStorage already has the session (enterAs writes sync).
       window.location.assign(roleHome[role]);
     } catch {
       navigating.current = false;
@@ -78,12 +93,7 @@ export default function LoginPage() {
 
         <div className="animate-rise-delay-1 mt-auto flex flex-col gap-3 pb-4">
           {roleProfiles.map((r) => {
-            const tone =
-              r.role === "owner"
-                ? "gold"
-                : r.role === "staff"
-                  ? "deep"
-                  : "leaf";
+            const tone = tones[r.role];
             return (
               <button
                 key={r.role}
@@ -91,21 +101,17 @@ export default function LoginPage() {
                 disabled={busy}
                 onClick={() => pickRole(r.role)}
                 className={cn(
-                  "flex min-h-[5rem] flex-col justify-center rounded-2xl px-5 text-left active:scale-[0.99] disabled:opacity-60",
+                  "flex min-h-[4.75rem] flex-col justify-center rounded-2xl px-5 text-left active:scale-[0.99] disabled:opacity-60",
                   tone === "gold"
                     ? "bg-[var(--garden-gold)] text-[var(--garden-deep)]"
                     : tone === "deep"
                       ? "bg-[var(--garden-deep)] text-white"
-                      : "bg-[var(--garden-leaf)] text-white",
+                      : tone === "leaf"
+                        ? "bg-[var(--garden-leaf)] text-white"
+                        : "bg-[var(--garden-moss)] text-white",
                 )}
               >
-                <span className="text-xl font-semibold">
-                  {r.role === "owner"
-                    ? "Owner"
-                    : r.role === "staff"
-                      ? "Staff"
-                      : "Kitchen"}
-                </span>
+                <span className="text-xl font-semibold">{labels[r.role]}</span>
                 <span
                   className={
                     tone === "gold"

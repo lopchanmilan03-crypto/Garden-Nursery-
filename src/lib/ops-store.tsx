@@ -219,7 +219,9 @@ export function OpsProvider({ children }: { children: ReactNode }) {
       session,
       role: authRoleToOpsRole(session.role),
       waiterName:
-        session.role === "staff" || session.role === "owner"
+        session.role === "staff" ||
+        session.role === "owner" ||
+        session.role === "cashier"
           ? session.displayName
           : prev.waiterName,
     });
