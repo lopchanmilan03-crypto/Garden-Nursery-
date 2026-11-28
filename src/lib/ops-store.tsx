@@ -35,10 +35,14 @@ import {
   type AuthRole,
   type AuthSession,
   type BillSplit,
+  createCostingForNewDish,
   type CostTargetsConfig,
   type DemoOrder,
+  type DishCostRecipe,
+  type DishIngredientUse,
   type Expense,
   type ExpenseCategory,
+  type IngredientPack,
   type KitchenTicket,
   type MenuItem,
   type OpsSettings,
@@ -52,7 +56,7 @@ import {
   type Vendor,
 } from "@/lib/demo-data";
 
-const STORAGE_KEY = "garden-restaurant-ops-v6";
+const STORAGE_KEY = "garden-restaurant-ops-v7";
 
 type PlaceOrderInput = {
   table: string | null;
@@ -75,9 +79,18 @@ type OpsContextValue = {
   updateSettings: (patch: Partial<OpsSettings>) => void;
   updateCostTargets: (patch: Partial<CostTargetsConfig>) => void;
   updateMonthlyOverhead: (id: string, patch: Partial<OverheadLine>) => void;
+  updateIngredientPack: (id: string, patch: Partial<IngredientPack>) => void;
+  updateDishCostRecipe: (
+    menuItemId: string,
+    patch: Partial<DishCostRecipe> | { ingredients: DishIngredientUse[] },
+  ) => void;
   updateMenuItem: (id: string, patch: Partial<MenuItem>) => void;
   updateRecipe: (menuItemId: string, recipe: RecipeLine[]) => void;
-  addMenuItem: (item: MenuItem) => void;
+  addMenuItem: (
+    item: MenuItem,
+    costing?: { packCost?: number; yieldQty?: number; yieldLabel?: string },
+  ) => void;
+  removeMenuItem: (id: string) => void;
   updateStock: (id: string, patch: Partial<StockItem>) => void;
   updateStaff: (id: string, patch: Partial<StaffMember>) => void;
   addStaff: (member: StaffMember) => void;
@@ -307,8 +320,43 @@ export function OpsProvider({ children }: { children: ReactNode }) {
     (id: string, ohPatch: Partial<OverheadLine>) =>
       patch((s) => ({
         ...s,
-        monthlyOverheads: s.monthlyOverheads.map((o) =>
-          o.id === id ? { ...o, ...ohPatch } : o,
+        monthlyOverheads: s.monthlyOverheads.map((o) => {
+          if (o.id !== id) return o;
+          const next = { ...o, ...ohPatch };
+          if (
+            next.kind === "salary" &&
+            (ohPatch.staffCount != null || ohPatch.payPerStaff != null)
+          ) {
+            const count = next.staffCount ?? 0;
+            const pay = next.payPerStaff ?? 0;
+            next.monthlyAmount = count * pay;
+          }
+          return next;
+        }),
+      })),
+    [patch],
+  );
+
+  const updateIngredientPack = useCallback(
+    (id: string, packPatch: Partial<IngredientPack>) =>
+      patch((s) => ({
+        ...s,
+        ingredientPacks: s.ingredientPacks.map((p) =>
+          p.id === id ? { ...p, ...packPatch } : p,
+        ),
+      })),
+    [patch],
+  );
+
+  const updateDishCostRecipe = useCallback(
+    (
+      menuItemId: string,
+      recipePatch: Partial<DishCostRecipe> | { ingredients: DishIngredientUse[] },
+    ) =>
+      patch((s) => ({
+        ...s,
+        dishCostRecipes: s.dishCostRecipes.map((r) =>
+          r.menuItemId === menuItemId ? { ...r, ...recipePatch } : r,
         ),
       })),
     [patch],
@@ -337,11 +385,62 @@ export function OpsProvider({ children }: { children: ReactNode }) {
   );
 
   const addMenuItem = useCallback(
-    (item: MenuItem) =>
-      patch((s) => ({
-        ...s,
-        menuItems: [...s.menuItems, { recipe: [], ...item }],
-      })),
+    (
+      item: MenuItem,
+      costingOpts?: {
+        packCost?: number;
+        yieldQty?: number;
+        yieldLabel?: string;
+      },
+    ) =>
+      patch((s) => {
+        const costing = createCostingForNewDish(item);
+        if (costingOpts?.packCost != null) {
+          costing.pack.packCost = costingOpts.packCost;
+        }
+        if (costingOpts?.yieldQty != null) {
+          costing.pack.yieldQty = costingOpts.yieldQty;
+        }
+        if (costingOpts?.yieldLabel) {
+          costing.pack.yieldLabel = costingOpts.yieldLabel;
+        }
+        return {
+          ...s,
+          menuItems: [...s.menuItems, { recipe: [], ...item }],
+          ingredientPacks: [...s.ingredientPacks, costing.pack],
+          dishCostRecipes: [...s.dishCostRecipes, costing.recipe],
+        };
+      }),
+    [patch],
+  );
+
+  const removeMenuItem = useCallback(
+    (id: string) =>
+      patch((s) => {
+        const removedRecipe = s.dishCostRecipes.find(
+          (r) => r.menuItemId === id,
+        );
+        const removedPackIds = new Set(
+          removedRecipe?.ingredients.map((i) => i.packId) ?? [],
+        );
+        const stillUsed = new Set(
+          s.dishCostRecipes
+            .filter((r) => r.menuItemId !== id)
+            .flatMap((r) => r.ingredients.map((i) => i.packId)),
+        );
+        return {
+          ...s,
+          menuItems: s.menuItems.filter((m) => m.id !== id),
+          dishCostRecipes: s.dishCostRecipes.filter(
+            (r) => r.menuItemId !== id,
+          ),
+          ingredientPacks: s.ingredientPacks.filter((p) => {
+            if (p.ownedByMenuItemId === id) return false;
+            if (removedPackIds.has(p.id) && !stillUsed.has(p.id)) return false;
+            return true;
+          }),
+        };
+      }),
     [patch],
   );
 
@@ -933,9 +1032,12 @@ export function OpsProvider({ children }: { children: ReactNode }) {
     updateSettings,
     updateCostTargets,
     updateMonthlyOverhead,
+    updateIngredientPack,
+    updateDishCostRecipe,
     updateMenuItem,
     updateRecipe,
     addMenuItem,
+    removeMenuItem,
     updateStock,
     updateStaff,
     addStaff,

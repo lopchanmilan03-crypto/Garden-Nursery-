@@ -199,9 +199,9 @@ export const restaurant = {
   name: "Garden Restaurant",
   tagline: "Peace among the plants",
   subtitle:
-    "A quiet Lazimpat garden cafe — coffee, a limited mindful menu, and space to work slowly.",
-  location: "Lazimpat, Kathmandu",
-  address: "Lazimpat Road, Kathmandu 44600, Nepal",
+    "A quiet Kathmandu garden cafe — coffee, a limited mindful menu, and space to work slowly.",
+  location: "Kathmandu",
+  address: "Kathmandu, Nepal",
   hours: "8:00 – 20:00 · Asia/Kathmandu",
   hoursWeekday: "Mon–Fri · 8:00 AM – 8:00 PM",
   hoursWeekend: "Sat–Sun · 8:00 AM – 8:00 PM",
@@ -672,7 +672,7 @@ export const seedExpenses: Expense[] = [
   {
     id: "ex-6",
     categoryId: "exp-rent",
-    label: "November shop rent · Lazimpat",
+    label: "November shop rent · Kathmandu",
     amount: 85000,
     date: "2026-11-01",
     paid: false,
@@ -870,6 +870,8 @@ export type IngredientPack = {
   packLabel: string;
   yieldQty: number;
   yieldLabel: string;
+  /** When set, deleting that menu item removes this pack. */
+  ownedByMenuItemId?: string;
 };
 
 export type DishIngredientUse = {
@@ -889,6 +891,9 @@ export type OverheadLine = {
   label: string;
   monthlyAmount: number;
   kind: "rent" | "salary" | "gas" | "electricity" | "water" | "other";
+  /** Salary lines: headcount × pay → monthlyAmount. */
+  staffCount?: number;
+  payPerStaff?: number;
 };
 
 /** Owner Cost / Targets — monthly goal + volume for overhead share. */
@@ -899,6 +904,8 @@ export type CostTargetsConfig = {
   monthLabel: string;
   /** MTD sales before today's live tickets (demo baseline). */
   mtdSalesSeed: number;
+  /** Editable shop label (shown on rent / cost header). */
+  shopName: string;
 };
 
 export type OpsState = {
@@ -1082,8 +1089,20 @@ export const seedDishCostRecipes: DishCostRecipe[] = [
 
 /** Major monthly overhead — rent, salary, utilities. */
 export const seedMonthlyOverheads: OverheadLine[] = [
-  { id: "oh-rent", label: "Shop rent · Lazimpat", monthlyAmount: 85000, kind: "rent" },
-  { id: "oh-salary", label: "Salaries", monthlyAmount: 155000, kind: "salary" },
+  {
+    id: "oh-rent",
+    label: "Shop rent",
+    monthlyAmount: 85000,
+    kind: "rent",
+  },
+  {
+    id: "oh-salary",
+    label: "Salaries",
+    monthlyAmount: 155000,
+    kind: "salary",
+    staffCount: 5,
+    payPerStaff: 31000,
+  },
   { id: "oh-gas", label: "Gas (LPG)", monthlyAmount: 12000, kind: "gas" },
   { id: "oh-elec", label: "Electricity", monthlyAmount: 18000, kind: "electricity" },
   { id: "oh-water", label: "Water", monthlyAmount: 3500, kind: "water" },
@@ -1095,7 +1114,44 @@ export const seedCostTargets: CostTargetsConfig = {
   monthlyUnitVolume: 9000,
   monthLabel: "Nov 2026",
   mtdSalesSeed: 312000,
+  shopName: "Garden Restaurant · Kathmandu",
 };
+
+export function overheadLineAmount(line: OverheadLine): number {
+  if (
+    line.kind === "salary" &&
+    line.staffCount != null &&
+    line.payPerStaff != null
+  ) {
+    return line.staffCount * line.payPerStaff;
+  }
+  return line.monthlyAmount;
+}
+
+/** Default pack + recipe when Owner adds a food item. */
+export function createCostingForNewDish(item: MenuItem): {
+  pack: IngredientPack;
+  recipe: DishCostRecipe;
+} {
+  const packId = `pack-${item.id}-main`;
+  const packCost = item.cost ?? Math.max(10, Math.round(item.price * 0.35));
+  return {
+    pack: {
+      id: packId,
+      name: `${item.name} pack`,
+      packCost,
+      packLabel: "pack",
+      yieldQty: 10,
+      yieldLabel: "portion",
+      ownedByMenuItemId: item.id,
+    },
+    recipe: {
+      menuItemId: item.id,
+      ingredients: [{ packId, unitsPerDish: 1 }],
+      note: "Edit pack cost & yield for market prices",
+    },
+  };
+}
 
 export function createSeedState(): OpsState {
   const menuItems = withSeedRecipes(structuredClone(seedMenuItems));
@@ -1331,7 +1387,7 @@ export function overheadSummary(
   overheads: OverheadLine[],
   monthlyUnitVolume: number,
 ) {
-  const monthly = overheads.reduce((s, o) => s + o.monthlyAmount, 0);
+  const monthly = overheads.reduce((s, o) => s + overheadLineAmount(o), 0);
   const daily = +(monthly / 30).toFixed(2);
   const perUnit =
     monthlyUnitVolume > 0 ? +(monthly / monthlyUnitVolume).toFixed(2) : 0;
@@ -1351,8 +1407,10 @@ export type DishCostRow = {
   cashIfSold: (qty: number) => number;
   profitIfSold: (qty: number) => number;
   lines: {
+    packId: string;
     packName: string;
     packCost: number;
+    packLabel: string;
     yieldQty: number;
     yieldLabel: string;
     unitsPerDish: number;
@@ -1379,8 +1437,10 @@ export function buildDishCostRows(
       if (!pack) continue;
       const unit = packUnitCost(pack);
       lines.push({
+        packId: pack.id,
         packName: pack.name,
         packCost: pack.packCost,
+        packLabel: pack.packLabel,
         yieldQty: pack.yieldQty,
         yieldLabel: pack.yieldLabel,
         unitsPerDish: use.unitsPerDish,

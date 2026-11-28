@@ -1,23 +1,38 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import type { MenuCategory } from "@/lib/demo-data";
 import { useOps } from "@/lib/ops-store";
 import { cn, formatNpr } from "@/lib/utils";
 
 const SCENARIO_QTY = [10, 50, 100] as const;
 
-/** Owner-only Cost / Targets — recipe costing, overhead, monthly goal. */
+const fieldClass =
+  "h-10 w-full rounded-xl border border-[var(--garden-leaf)]/15 bg-white px-2 text-sm font-semibold text-[var(--garden-deep)]";
+
+/** Owner-only Cost / Targets — editable packs, overhead, sell prices. */
 export function CostTargetsPanel() {
   const {
     state,
     metrics,
     updateCostTargets,
     updateMonthlyOverhead,
+    updateIngredientPack,
+    updateDishCostRecipe,
+    updateMenuItem,
+    addMenuItem,
+    removeMenuItem,
   } = useOps();
   const [openId, setOpenId] = useState<string | null>("chiya");
   const [targetDraft, setTargetDraft] = useState(
     String(state.costTargets.monthlySalesTarget),
   );
+  const [newDish, setNewDish] = useState({
+    name: "",
+    price: "",
+    packCost: "",
+    yieldQty: "10",
+  });
 
   const tea = useMemo(
     () => metrics.dishCosts.find((d) => d.menuItemId === "chiya"),
@@ -26,11 +41,35 @@ export function CostTargetsPanel() {
 
   const target = metrics.monthlyTarget;
   const oh = metrics.overhead;
+  const shopName =
+    state.costTargets.shopName || "Garden Restaurant · Kathmandu";
 
   function saveTarget() {
     const n = Number(targetDraft.replace(/,/g, ""));
     if (!n || n < 0) return;
     updateCostTargets({ monthlySalesTarget: n });
+  }
+
+  function addFoodItem() {
+    const name = newDish.name.trim();
+    const price = Number(newDish.price);
+    if (!name || !price) return;
+    const id = `dish-${Date.now()}`;
+    const packCost = Number(newDish.packCost) || Math.round(price * 0.35);
+    const yieldQty = Number(newDish.yieldQty) || 10;
+    addMenuItem(
+      {
+        id,
+        name,
+        description: "Owner-added dish",
+        price,
+        cost: +(packCost / yieldQty).toFixed(2),
+        category: "mains" as MenuCategory,
+      },
+      { packCost, yieldQty },
+    );
+    setNewDish({ name: "", price: "", packCost: "", yieldQty: "10" });
+    setOpenId(id);
   }
 
   return (
@@ -40,9 +79,22 @@ export function CostTargetsPanel() {
           Cost / Targets
         </h2>
         <p className="mt-1 text-sm text-[var(--garden-ink)]/55">
-          True cost = ingredients + overhead · NPR · {target.monthLabel}
+          Edit market prices — true cost & profit update live · NPR ·{" "}
+          {target.monthLabel}
         </p>
       </div>
+
+      <section className="rounded-2xl bg-white p-4 ring-1 ring-[var(--garden-leaf)]/10">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--garden-leaf)]">
+          Shop name
+        </p>
+        <input
+          className={cn(fieldClass, "mt-2")}
+          value={shopName}
+          onChange={(e) => updateCostTargets({ shopName: e.target.value })}
+          aria-label="Shop name"
+        />
+      </section>
 
       <section className="rounded-2xl bg-[var(--garden-deep)] px-4 py-4 text-white">
         <div className="flex items-start justify-between gap-2">
@@ -104,12 +156,14 @@ export function CostTargetsPanel() {
             {tea.name}
           </p>
           <p className="mt-1 text-sm text-[var(--garden-ink)]/60">
-            {tea.note ??
-              "Milk NPR 100/packet ≈ 10 cups · true cost auto-totals"}
+            Edit packs below — milk pack cost & yield drive this live.
           </p>
           <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
             <MiniStat label="Sell" value={formatNpr(tea.sellPrice)} />
-            <MiniStat label="Ingredients" value={formatNpr(tea.ingredientCost)} />
+            <MiniStat
+              label="Ingredients"
+              value={formatNpr(tea.ingredientCost)}
+            />
             <MiniStat label="True cost" value={formatNpr(tea.trueCost)} />
             <MiniStat
               label="Profit / cup"
@@ -117,15 +171,6 @@ export function CostTargetsPanel() {
               strong
             />
           </div>
-          <p className="mt-3 text-xs text-[var(--garden-ink)]/50">
-            Break-even to cover monthly overhead ≈{" "}
-            <span className="font-semibold text-[var(--garden-deep)]">
-              {tea.breakEvenUnits.toLocaleString("en-NP")} cups
-            </span>
-            {" · "}
-            50 cups → cash {formatNpr(tea.cashIfSold(50))}, earn{" "}
-            {formatNpr(tea.profitIfSold(50))}
-          </p>
         </section>
       ) : null}
 
@@ -135,30 +180,91 @@ export function CostTargetsPanel() {
         </p>
         <p className="mt-1 text-xs text-[var(--garden-ink)]/50">
           {formatNpr(oh.monthly)} / mo · ~{formatNpr(oh.daily)} / day · ~
-          {formatNpr(oh.perUnit)} / dish (at{" "}
-          {state.costTargets.monthlyUnitVolume.toLocaleString("en-NP")} units)
+          {formatNpr(oh.perUnit)} / dish
         </p>
-        <ul className="mt-3 space-y-2">
-          {state.monthlyOverheads.map((row) => (
-            <li
-              key={row.id}
-              className="flex items-center justify-between gap-2 text-sm"
-            >
-              <span className="min-w-0 truncate">{row.label}</span>
-              <input
-                type="number"
-                className="h-10 w-24 rounded-xl border border-[var(--garden-leaf)]/15 px-2 text-right text-sm font-semibold"
-                value={row.monthlyAmount}
-                onChange={(e) =>
-                  updateMonthlyOverhead(row.id, {
-                    monthlyAmount: Number(e.target.value) || 0,
-                  })
-                }
-                aria-label={`${row.label} monthly NPR`}
-              />
-            </li>
-          ))}
+        <ul className="mt-3 space-y-3">
+          {state.monthlyOverheads.map((row) => {
+            if (row.kind === "salary") {
+              const count = row.staffCount ?? 0;
+              const pay = row.payPerStaff ?? 0;
+              const total = count * pay;
+              return (
+                <li key={row.id} className="space-y-2">
+                  <p className="text-sm font-medium text-[var(--garden-deep)]">
+                    Salaries · {count} staff
+                  </p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <label className="text-[11px] text-[var(--garden-ink)]/50">
+                      Staff count
+                      <input
+                        type="number"
+                        min={0}
+                        className={cn(fieldClass, "mt-1")}
+                        value={count}
+                        onChange={(e) =>
+                          updateMonthlyOverhead(row.id, {
+                            staffCount: Number(e.target.value) || 0,
+                          })
+                        }
+                      />
+                    </label>
+                    <label className="text-[11px] text-[var(--garden-ink)]/50">
+                      Pay / staff
+                      <input
+                        type="number"
+                        min={0}
+                        className={cn(fieldClass, "mt-1")}
+                        value={pay}
+                        onChange={(e) =>
+                          updateMonthlyOverhead(row.id, {
+                            payPerStaff: Number(e.target.value) || 0,
+                          })
+                        }
+                      />
+                    </label>
+                  </div>
+                  <p className="text-right text-sm font-semibold tabular-nums">
+                    = {formatNpr(total)} / mo
+                  </p>
+                </li>
+              );
+            }
+            const rentLabel =
+              row.kind === "rent" ? `Shop rent · ${shopName}` : row.label;
+            return (
+              <li
+                key={row.id}
+                className="flex items-center justify-between gap-2 text-sm"
+              >
+                <span className="min-w-0 truncate">{rentLabel}</span>
+                <input
+                  type="number"
+                  className="h-10 w-24 rounded-xl border border-[var(--garden-leaf)]/15 px-2 text-right text-sm font-semibold"
+                  value={row.monthlyAmount}
+                  onChange={(e) =>
+                    updateMonthlyOverhead(row.id, {
+                      monthlyAmount: Number(e.target.value) || 0,
+                    })
+                  }
+                  aria-label={`${rentLabel} monthly NPR`}
+                />
+              </li>
+            );
+          })}
         </ul>
+        <label className="mt-3 block text-[11px] text-[var(--garden-ink)]/50">
+          Monthly dish volume (for overhead / unit)
+          <input
+            type="number"
+            className={cn(fieldClass, "mt-1")}
+            value={state.costTargets.monthlyUnitVolume}
+            onChange={(e) =>
+              updateCostTargets({
+                monthlyUnitVolume: Number(e.target.value) || 1,
+              })
+            }
+          />
+        </label>
       </section>
 
       <section className="rounded-2xl bg-white p-4 ring-1 ring-[var(--garden-leaf)]/10">
@@ -166,9 +272,9 @@ export function CostTargetsPanel() {
           Ingredient packs
         </p>
         <p className="mt-1 text-xs text-[var(--garden-ink)]/50">
-          Pack cost → yield → cost per unit
+          Edit pack cost & yield — cost/unit recalculates
         </p>
-        <ul className="mt-3 space-y-2">
+        <ul className="mt-3 space-y-3">
           {state.ingredientPacks.map((pack) => {
             const unit =
               pack.yieldQty > 0
@@ -177,22 +283,116 @@ export function CostTargetsPanel() {
             return (
               <li
                 key={pack.id}
-                className="flex items-baseline justify-between gap-2 text-sm"
+                className="rounded-xl bg-[var(--garden-fog)]/60 p-3"
               >
-                <span className="min-w-0">
-                  <span className="font-medium">{pack.name}</span>
-                  <span className="mt-0.5 block text-[11px] text-[var(--garden-ink)]/45">
-                    {formatNpr(pack.packCost)}/{pack.packLabel} → {pack.yieldQty}{" "}
-                    {pack.yieldLabel}s
-                  </span>
-                </span>
-                <span className="shrink-0 tabular-nums font-semibold">
-                  {formatNpr(unit)}/{pack.yieldLabel}
-                </span>
+                <input
+                  className={cn(fieldClass, "bg-[var(--garden-fog)]")}
+                  value={pack.name}
+                  onChange={(e) =>
+                    updateIngredientPack(pack.id, { name: e.target.value })
+                  }
+                  aria-label={`${pack.name} name`}
+                />
+                <div className="mt-2 grid grid-cols-3 gap-2">
+                  <label className="text-[10px] text-[var(--garden-ink)]/45">
+                    NPR / {pack.packLabel}
+                    <input
+                      type="number"
+                      className={cn(fieldClass, "mt-1")}
+                      value={pack.packCost}
+                      onChange={(e) =>
+                        updateIngredientPack(pack.id, {
+                          packCost: Number(e.target.value) || 0,
+                        })
+                      }
+                    />
+                  </label>
+                  <label className="text-[10px] text-[var(--garden-ink)]/45">
+                    Yield
+                    <input
+                      type="number"
+                      className={cn(fieldClass, "mt-1")}
+                      value={pack.yieldQty}
+                      onChange={(e) =>
+                        updateIngredientPack(pack.id, {
+                          yieldQty: Number(e.target.value) || 0,
+                        })
+                      }
+                    />
+                  </label>
+                  <label className="text-[10px] text-[var(--garden-ink)]/45">
+                    Unit
+                    <input
+                      className={cn(fieldClass, "mt-1")}
+                      value={pack.yieldLabel}
+                      onChange={(e) =>
+                        updateIngredientPack(pack.id, {
+                          yieldLabel: e.target.value,
+                        })
+                      }
+                    />
+                  </label>
+                </div>
+                <p className="mt-2 text-right text-sm font-semibold tabular-nums text-[var(--garden-deep)]">
+                  {formatNpr(unit)} / {pack.yieldLabel}
+                </p>
               </li>
             );
           })}
         </ul>
+      </section>
+
+      <section className="rounded-2xl bg-white p-4 ring-1 ring-[var(--garden-leaf)]/10">
+        <p className="font-semibold text-[var(--garden-deep)]">
+          Add food item
+        </p>
+        <p className="mt-1 text-xs text-[var(--garden-ink)]/50">
+          Creates a linked ingredient pack + recipe
+        </p>
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          <input
+            className={cn(fieldClass, "col-span-2")}
+            placeholder="Dish name"
+            value={newDish.name}
+            onChange={(e) =>
+              setNewDish((d) => ({ ...d, name: e.target.value }))
+            }
+          />
+          <input
+            type="number"
+            className={fieldClass}
+            placeholder="Sell NPR"
+            value={newDish.price}
+            onChange={(e) =>
+              setNewDish((d) => ({ ...d, price: e.target.value }))
+            }
+          />
+          <input
+            type="number"
+            className={fieldClass}
+            placeholder="Pack cost NPR"
+            value={newDish.packCost}
+            onChange={(e) =>
+              setNewDish((d) => ({ ...d, packCost: e.target.value }))
+            }
+          />
+          <input
+            type="number"
+            className={cn(fieldClass, "col-span-2")}
+            placeholder="Yield portions"
+            value={newDish.yieldQty}
+            onChange={(e) =>
+              setNewDish((d) => ({ ...d, yieldQty: e.target.value }))
+            }
+          />
+        </div>
+        <button
+          type="button"
+          onClick={addFoodItem}
+          className="mt-3 flex min-h-12 w-full items-center justify-center rounded-2xl bg-[var(--garden-deep)] text-sm font-semibold text-white"
+        >
+          Add dish + pack
+        </button>
       </section>
 
       <p className="pt-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--garden-leaf)]">
@@ -201,6 +401,9 @@ export function CostTargetsPanel() {
 
       {metrics.dishCosts.map((dish) => {
         const open = openId === dish.menuItemId;
+        const recipe = state.dishCostRecipes.find(
+          (r) => r.menuItemId === dish.menuItemId,
+        );
         return (
           <article
             key={dish.menuItemId}
@@ -214,9 +417,7 @@ export function CostTargetsPanel() {
             <button
               type="button"
               className="flex w-full items-start justify-between gap-2 px-4 py-4 text-left"
-              onClick={() =>
-                setOpenId(open ? null : dish.menuItemId)
-              }
+              onClick={() => setOpenId(open ? null : dish.menuItemId)}
             >
               <div className="min-w-0">
                 <p className="font-[family-name:var(--font-display)] text-lg text-[var(--garden-deep)]">
@@ -224,8 +425,8 @@ export function CostTargetsPanel() {
                 </p>
                 <p className="mt-0.5 text-xs text-[var(--garden-ink)]/50">
                   Sell {formatNpr(dish.sellPrice)} · true{" "}
-                  {formatNpr(dish.trueCost)} ·{" "}
-                  {dish.contributionMarginPct}% contrib
+                  {formatNpr(dish.trueCost)} · {dish.contributionMarginPct}%
+                  contrib
                 </p>
               </div>
               <p
@@ -242,30 +443,85 @@ export function CostTargetsPanel() {
 
             {open ? (
               <div className="space-y-3 border-t border-[var(--garden-leaf)]/10 px-4 pb-4 pt-3">
-                {dish.note ? (
-                  <p className="text-xs text-[var(--garden-ink)]/55">
-                    {dish.note}
-                  </p>
-                ) : null}
-                <ul className="space-y-1.5 text-sm">
-                  {dish.lines.map((line) => (
-                    <li
-                      key={`${dish.menuItemId}-${line.packName}`}
-                      className="flex justify-between gap-2"
-                    >
-                      <span className="min-w-0 truncate text-[var(--garden-ink)]/70">
-                        {line.packName} ×{line.unitsPerDish}{" "}
-                        <span className="text-[11px] text-[var(--garden-ink)]/40">
-                          ({formatNpr(line.packCost)} → {line.yieldQty}{" "}
-                          {line.yieldLabel}s)
-                        </span>
-                      </span>
-                      <span className="shrink-0 tabular-nums font-medium">
-                        {formatNpr(line.cost)}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
+                <label className="block text-[11px] text-[var(--garden-ink)]/50">
+                  Sell price (NPR)
+                  <input
+                    type="number"
+                    className={cn(fieldClass, "mt-1")}
+                    value={dish.sellPrice}
+                    onChange={(e) =>
+                      updateMenuItem(dish.menuItemId, {
+                        price: Number(e.target.value) || 0,
+                      })
+                    }
+                  />
+                </label>
+
+                {dish.lines.map((line) => (
+                  <div
+                    key={`${dish.menuItemId}-${line.packId}`}
+                    className="rounded-xl bg-[var(--garden-fog)]/70 p-3"
+                  >
+                    <p className="text-sm font-medium text-[var(--garden-deep)]">
+                      {line.packName}
+                    </p>
+                    <div className="mt-2 grid grid-cols-3 gap-2">
+                      <label className="text-[10px] text-[var(--garden-ink)]/45">
+                        Pack NPR
+                        <input
+                          type="number"
+                          className={cn(fieldClass, "mt-1")}
+                          value={line.packCost}
+                          onChange={(e) =>
+                            updateIngredientPack(line.packId, {
+                              packCost: Number(e.target.value) || 0,
+                            })
+                          }
+                        />
+                      </label>
+                      <label className="text-[10px] text-[var(--garden-ink)]/45">
+                        Yield
+                        <input
+                          type="number"
+                          className={cn(fieldClass, "mt-1")}
+                          value={line.yieldQty}
+                          onChange={(e) =>
+                            updateIngredientPack(line.packId, {
+                              yieldQty: Number(e.target.value) || 0,
+                            })
+                          }
+                        />
+                      </label>
+                      <label className="text-[10px] text-[var(--garden-ink)]/45">
+                        Use / dish
+                        <input
+                          type="number"
+                          step="0.1"
+                          className={cn(fieldClass, "mt-1")}
+                          value={line.unitsPerDish}
+                          onChange={(e) => {
+                            if (!recipe) return;
+                            updateDishCostRecipe(dish.menuItemId, {
+                              ingredients: recipe.ingredients.map((ing) =>
+                                ing.packId === line.packId
+                                  ? {
+                                      ...ing,
+                                      unitsPerDish:
+                                        Number(e.target.value) || 0,
+                                    }
+                                  : ing,
+                              ),
+                            });
+                          }}
+                        />
+                      </label>
+                    </div>
+                    <p className="mt-2 text-right text-xs font-semibold">
+                      Line cost {formatNpr(line.cost)}
+                    </p>
+                  </div>
+                ))}
+
                 <div className="space-y-1 rounded-xl bg-[var(--garden-fog)]/70 px-3 py-2.5 text-sm">
                   <CostRow
                     label="Ingredient cost"
@@ -279,10 +535,6 @@ export function CostTargetsPanel() {
                     label="True cost"
                     value={formatNpr(dish.trueCost)}
                     strong
-                  />
-                  <CostRow
-                    label="Sell price"
-                    value={formatNpr(dish.sellPrice)}
                   />
                   <CostRow
                     label="Profit / unit"
@@ -314,6 +566,22 @@ export function CostTargetsPanel() {
                     </div>
                   ))}
                 </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (
+                      typeof window !== "undefined" &&
+                      !window.confirm(`Delete ${dish.name} and its packs?`)
+                    ) {
+                      return;
+                    }
+                    removeMenuItem(dish.menuItemId);
+                    setOpenId(null);
+                  }}
+                  className="w-full py-2 text-center text-sm font-semibold text-red-800"
+                >
+                  Delete dish + packs
+                </button>
               </div>
             ) : null}
           </article>
@@ -325,7 +593,7 @@ export function CostTargetsPanel() {
 
 /** Compact monthly target card for Owner Dash. */
 export function CostTargetsDashCard({ onOpen }: { onOpen: () => void }) {
-  const { metrics } = useOps();
+  const { metrics, state } = useOps();
   const t = metrics.monthlyTarget;
   const tea = metrics.dishCosts.find((d) => d.menuItemId === "chiya");
 
@@ -340,9 +608,12 @@ export function CostTargetsDashCard({ onOpen }: { onOpen: () => void }) {
           Cost / Targets
         </p>
         <span className="text-xs font-semibold text-[var(--garden-leaf)]">
-          Open →
+          Edit →
         </span>
       </div>
+      <p className="mt-1 text-[11px] text-[var(--garden-ink)]/45">
+        {state.costTargets.shopName}
+      </p>
       <div className="mt-3 h-2 overflow-hidden rounded-full bg-[var(--garden-fog)]">
         <div
           className="h-full rounded-full bg-[var(--garden-deep)]"

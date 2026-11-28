@@ -20,7 +20,7 @@ export const metadata: Metadata = {
     template: "%s · Garden Restaurant",
   },
   description:
-    "Garden Restaurant cafe ops — Owner, Staff, Kitchen. Sales, stock, attendance, billing. Lazimpat demo.",
+    "Garden Restaurant cafe ops — Owner, Staff, Kitchen, Cashier. Sales, stock, attendance, billing. Kathmandu demo.",
   appleWebApp: {
     capable: true,
     title: "Garden Ops",
