@@ -21,6 +21,7 @@ import {
   paySplit,
   profitByProduct,
   profitMarginPct,
+  restoreStockForLines,
   stockAlertLevel,
   todayKharcha,
   todaySale,
@@ -110,6 +111,8 @@ type OpsContextValue = {
     criticalStock: StockItem[];
     vendorDues: number;
     unpaidExpenses: number;
+    /** Vendor dues + unpaid expenses with no vendor (avoids double-count). */
+    payablesTotal: number;
     takeawayOpen: number;
     topSellers: ReturnType<typeof topSellers>;
     expenseHotspots: ReturnType<typeof expenseHotspots>;
@@ -170,9 +173,13 @@ export function OpsProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
+    // Hydrate once from localStorage (client-only; avoid SSR mismatch).
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) setState(mergeState(JSON.parse(raw) as Partial<OpsState>));
+      if (raw) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional one-shot hydrate
+        setState(mergeState(JSON.parse(raw) as Partial<OpsState>));
+      }
     } catch {
       /* keep seed */
     }
@@ -562,61 +569,84 @@ export function OpsProvider({ children }: { children: ReactNode }) {
 
   const voidOrder = useCallback(
     (orderId: string, reason: string) =>
-      patch((s) => ({
-        ...s,
-        orders: s.orders.map((o) =>
-          o.id === orderId
-            ? {
-                ...o,
-                status: "cancelled" as const,
-                voidReason: reason,
-                lines: (o.lines ?? []).map((l) => ({
-                  ...l,
-                  voided: true,
+      patch((s) => {
+        const order = s.orders.find((o) => o.id === orderId);
+        if (!order || order.status === "cancelled") return s;
+        const linesToRestore =
+          order.stockDeducted && order.lines?.length
+            ? order.lines.filter((l) => !l.voided)
+            : [];
+        const stock = linesToRestore.length
+          ? restoreStockForLines(s.stock, s.menuItems, linesToRestore)
+          : s.stock;
+        return {
+          ...s,
+          stock,
+          orders: s.orders.map((o) =>
+            o.id === orderId
+              ? {
+                  ...o,
+                  status: "cancelled" as const,
                   voidReason: reason,
-                })),
-              }
-            : o,
-        ),
-        kitchenTickets: s.kitchenTickets.map((t) => {
-          const linked =
-            t.orderId === orderId ||
-            (!t.orderId &&
-              (() => {
-                const order = s.orders.find((o) => o.id === orderId);
-                return (
-                  !!order &&
-                  t.placedAt === order.placedAt &&
-                  t.guest === order.guest
-                );
-              })());
-          if (!linked) return t;
-          return { ...t, status: "bumped" as const, notes: `VOID: ${reason}` };
-        }),
-      })),
+                  stockDeducted: false,
+                  lines: (o.lines ?? []).map((l) => ({
+                    ...l,
+                    voided: true,
+                    voidReason: reason,
+                  })),
+                }
+              : o,
+          ),
+          kitchenTickets: s.kitchenTickets.map((t) => {
+            const linked =
+              t.orderId === orderId ||
+              (!t.orderId &&
+                t.placedAt === order.placedAt &&
+                t.guest === order.guest);
+            if (!linked) return t;
+            return {
+              ...t,
+              status: "bumped" as const,
+              notes: `VOID: ${reason}`,
+            };
+          }),
+        };
+      }),
     [patch],
   );
 
   const voidLine = useCallback(
     (orderId: string, lineIndex: number, reason: string) =>
-      patch((s) => ({
-        ...s,
-        orders: s.orders.map((o) => {
-          if (o.id !== orderId || !o.lines) return o;
-          const lines = o.lines.map((l, i) =>
-            i === lineIndex ? { ...l, voided: true, voidReason: reason } : l,
-          );
-          const items = lines
-            .filter((l) => !l.voided)
-            .map((l) => `${l.name} ×${l.qty}`);
-          return {
-            ...o,
-            lines,
-            items,
-            total: orderSubtotal({ ...o, lines }, s.menuItems),
-          };
-        }),
-      })),
+      patch((s) => {
+        const order = s.orders.find((o) => o.id === orderId);
+        if (!order?.lines?.[lineIndex] || order.lines[lineIndex].voided) {
+          return s;
+        }
+        const line = order.lines[lineIndex];
+        const stock =
+          order.stockDeducted
+            ? restoreStockForLines(s.stock, s.menuItems, [line])
+            : s.stock;
+        return {
+          ...s,
+          stock,
+          orders: s.orders.map((o) => {
+            if (o.id !== orderId || !o.lines) return o;
+            const lines = o.lines.map((l, i) =>
+              i === lineIndex ? { ...l, voided: true, voidReason: reason } : l,
+            );
+            const items = lines
+              .filter((l) => !l.voided)
+              .map((l) => `${l.name} ×${l.qty}`);
+            return {
+              ...o,
+              lines,
+              items,
+              total: orderSubtotal({ ...o, lines }, s.menuItems),
+            };
+          }),
+        };
+      }),
     [patch],
   );
 
@@ -809,6 +839,11 @@ export function OpsProvider({ children }: { children: ReactNode }) {
       unpaidExpenses: state.expenses
         .filter((e) => !e.paid)
         .reduce((sum, e) => sum + e.amount, 0),
+      payablesTotal:
+        state.vendors.reduce((sum, v) => sum + v.dues, 0) +
+        state.expenses
+          .filter((e) => !e.paid && !e.vendorId)
+          .reduce((sum, e) => sum + e.amount, 0),
       takeawayOpen: state.kitchenTickets.filter(
         (t) => t.type === "takeaway" && t.status !== "bumped",
       ).length,

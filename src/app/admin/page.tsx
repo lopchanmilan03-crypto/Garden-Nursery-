@@ -185,7 +185,7 @@ function AdminInner() {
             <div className="grid grid-cols-2 gap-2">
               <Quick
                 label="Payables"
-                value={formatNpr(metrics.vendorDues + metrics.unpaidExpenses)}
+                value={formatNpr(metrics.payablesTotal)}
                 onClick={() => setTab("pay")}
               />
               <Quick

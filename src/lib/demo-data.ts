@@ -791,15 +791,6 @@ export const seedStaff: StaffMember[] = [
   },
 ];
 
-export const seedDayClose: DayClose = {
-  date: OPS_TODAY,
-  cash: 440,
-  card: 0,
-  upi: 600,
-  expenses: 3600,
-  closed: false,
-};
-
 export const seedMonthly: MonthlyPoint[] = [
   { month: "Jun", sales: 385000, kharcha: 210000, profit: 175000 },
   { month: "Jul", sales: 402000, kharcha: 225000, profit: 177000 },
@@ -899,9 +890,12 @@ export function withSeedRecipes(items: MenuItem[]): MenuItem[] {
   });
 }
 
+const defaultSettings: OpsSettings = { vatEnabled: true, vatPercent: 13 };
+
 export function createSeedState(): OpsState {
+  const menuItems = withSeedRecipes(structuredClone(seedMenuItems));
   return {
-    menuItems: withSeedRecipes(structuredClone(seedMenuItems)),
+    menuItems,
     tables: structuredClone(seedTables),
     orders: structuredClone(seedOrders),
     kitchenTickets: structuredClone(seedKitchenTickets),
@@ -911,11 +905,11 @@ export function createSeedState(): OpsState {
     vendors: structuredClone(seedVendors),
     staff: structuredClone(seedStaff),
     attendance: structuredClone(seedAttendance),
-    dayClose: structuredClone(seedDayClose),
+    dayClose: buildSeedDayClose(),
     monthly: structuredClone(seedMonthly),
     role: "owner",
     waiterName: "Sita Gurung",
-    settings: { vatEnabled: true, vatPercent: 13 },
+    settings: { ...defaultSettings },
     session: null,
   };
 }
@@ -1110,11 +1104,10 @@ export function orderPayableTotal(
   return +(afterDiscount + vat + (order.tip ?? 0)).toFixed(2);
 }
 
-export function deductStockForLines(
-  stock: StockItem[],
+function stockUsageForLines(
   menu: MenuItem[],
   lines: { menuItemId: string; qty: number; voided?: boolean }[],
-): StockItem[] {
+): Map<string, number> {
   const usage = new Map<string, number>();
   for (const line of lines) {
     if (line.voided) continue;
@@ -1128,10 +1121,33 @@ export function deductStockForLines(
       usage.set(r.skuId, (usage.get(r.skuId) ?? 0) + r.qty * line.qty);
     }
   }
+  return usage;
+}
+
+export function deductStockForLines(
+  stock: StockItem[],
+  menu: MenuItem[],
+  lines: { menuItemId: string; qty: number; voided?: boolean }[],
+): StockItem[] {
+  const usage = stockUsageForLines(menu, lines);
   return stock.map((row) => {
     const used = usage.get(row.id);
     if (!used) return row;
     return { ...row, qty: Math.max(0, +(row.qty - used).toFixed(2)) };
+  });
+}
+
+/** Put ingredients back after a void (inverse of deduct). */
+export function restoreStockForLines(
+  stock: StockItem[],
+  menu: MenuItem[],
+  lines: { menuItemId: string; qty: number; voided?: boolean }[],
+): StockItem[] {
+  const usage = stockUsageForLines(menu, lines);
+  return stock.map((row) => {
+    const used = usage.get(row.id);
+    if (!used) return row;
+    return { ...row, qty: +(row.qty + used).toFixed(2) };
   });
 }
 
@@ -1173,3 +1189,19 @@ export function paySplit(
   }
   return split;
 }
+
+function buildSeedDayClose(): DayClose {
+  const menu = withSeedRecipes(structuredClone(seedMenuItems));
+  const split = paySplit(seedOrders, menu, defaultSettings);
+  return {
+    date: OPS_TODAY,
+    cash: +split.cash.toFixed(2),
+    card: +split.card.toFixed(2),
+    upi: +split.upi.toFixed(2),
+    expenses: todayKharcha(seedExpenses, OPS_TODAY),
+    closed: false,
+  };
+}
+
+/** Matches VAT-aware paySplit of seed paid/served orders. */
+export const seedDayClose: DayClose = buildSeedDayClose();
