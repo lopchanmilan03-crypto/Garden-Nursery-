@@ -83,8 +83,8 @@ export function PhoneNav({
   const dark = tone === "dark";
   const tabs = tabsOverride ?? defaultTabs(role, pathname);
 
-  function handleLogout() {
-    logout();
+  async function handleLogout() {
+    await logout();
     router.replace("/");
   }
 

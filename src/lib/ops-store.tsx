@@ -25,9 +25,10 @@ import {
   todayKharcha,
   todaySale,
   topSellers,
-  tryLogin,
+  sessionForRole,
   withSeedRecipes,
   type AttendanceRecord,
+  type AuthRole,
   type AuthSession,
   type BillSplit,
   type DemoOrder,
@@ -45,7 +46,7 @@ import {
   type Vendor,
 } from "@/lib/demo-data";
 
-const STORAGE_KEY = "garden-restaurant-ops-v4";
+const STORAGE_KEY = "garden-restaurant-ops-v5";
 
 type PlaceOrderInput = {
   table: string | null;
@@ -61,8 +62,8 @@ type PlaceOrderInput = {
 type OpsContextValue = {
   state: OpsState;
   ready: boolean;
-  login: (username: string, password: string) => boolean;
-  logout: () => void;
+  enterAs: (role: AuthRole) => Promise<boolean>;
+  logout: () => Promise<void>;
   setRole: (role: Role) => void;
   setWaiterName: (name: string) => void;
   updateSettings: (patch: Partial<OpsSettings>) => void;
@@ -149,7 +150,18 @@ function mergeState(parsed: Partial<OpsState>): OpsState {
       ? parsed.attendance
       : seed.attendance,
     settings: { ...seed.settings, ...(parsed.settings ?? {}) },
-    session: parsed.session ?? null,
+    session: sanitizeSession(parsed.session),
+  };
+}
+
+function sanitizeSession(
+  session: OpsState["session"] | (AuthSession & { username?: string }) | null | undefined,
+): AuthSession | null {
+  if (!session?.role || !session.staffId || !session.displayName) return null;
+  return {
+    role: session.role,
+    staffId: session.staffId,
+    displayName: session.displayName,
   };
 }
 
@@ -189,10 +201,20 @@ export function OpsProvider({ children }: { children: ReactNode }) {
     setState(fn);
   }, []);
 
-  const login = useCallback(
-    (username: string, password: string) => {
-      const session = tryLogin(username, password);
+  const enterAs = useCallback(
+    async (role: AuthRole) => {
+      const session = sessionForRole(role);
       if (!session) return false;
+      try {
+        const res = await fetch("/api/session", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ role }),
+        });
+        if (!res.ok) return false;
+      } catch {
+        return false;
+      }
       patch((s) => ({
         ...s,
         session,
@@ -207,7 +229,12 @@ export function OpsProvider({ children }: { children: ReactNode }) {
     [patch],
   );
 
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
+    try {
+      await fetch("/api/session", { method: "DELETE" });
+    } catch {
+      /* ignore */
+    }
     patch((s) => ({ ...s, session: null }));
   }, [patch]);
 
@@ -390,9 +417,9 @@ export function OpsProvider({ children }: { children: ReactNode }) {
 
   const placeOrder = useCallback(
     (input: PlaceOrderInput) => {
-      const idNum = Math.floor(1000 + Math.random() * 9000);
-      const orderId = `ord-${idNum}`;
-      const ticketId = `kt-${idNum}`;
+      const stamp = `${Date.now().toString(36)}${Math.floor(Math.random() * 1000)}`;
+      const orderId = `ord-${stamp}`;
+      const ticketId = `kt-${stamp}`;
       const placedAt = nowTime();
       const items = input.lines.map((l) => `${l.name} ×${l.qty}`);
       const source = input.source ?? "waiter";
@@ -400,6 +427,7 @@ export function OpsProvider({ children }: { children: ReactNode }) {
       patch((s) => {
         const ticket: KitchenTicket = {
           id: ticketId,
+          orderId,
           table: input.table,
           type: input.type,
           guest: input.guest,
@@ -459,28 +487,31 @@ export function OpsProvider({ children }: { children: ReactNode }) {
 
   const bumpKitchenTicket = useCallback(
     (id: string, status: KitchenTicket["status"]) =>
-      patch((s) => ({
-        ...s,
-        kitchenTickets: s.kitchenTickets.map((t) =>
-          t.id === id ? { ...t, status } : t,
-        ),
-        orders: s.orders.map((o) => {
-          const ticket = s.kitchenTickets.find((t) => t.id === id);
-          if (
-            !ticket ||
-            o.placedAt !== ticket.placedAt ||
-            o.guest !== ticket.guest
-          )
-            return o;
-          const map: Record<string, DemoOrder["status"]> = {
-            queued: "new",
-            preparing: "preparing",
-            ready: "ready",
-            bumped: "served",
-          };
-          return { ...o, status: map[status] ?? o.status };
-        }),
-      })),
+      patch((s) => {
+        const ticket = s.kitchenTickets.find((t) => t.id === id);
+        return {
+          ...s,
+          kitchenTickets: s.kitchenTickets.map((t) =>
+            t.id === id ? { ...t, status } : t,
+          ),
+          orders: s.orders.map((o) => {
+            if (!ticket) return o;
+            const linked =
+              (ticket.orderId && o.id === ticket.orderId) ||
+              (!ticket.orderId &&
+                o.placedAt === ticket.placedAt &&
+                o.guest === ticket.guest);
+            if (!linked) return o;
+            const map: Record<string, DemoOrder["status"]> = {
+              queued: "new",
+              preparing: "preparing",
+              ready: "ready",
+              bumped: "served",
+            };
+            return { ...o, status: map[status] ?? o.status };
+          }),
+        };
+      }),
     [patch],
   );
 
@@ -548,13 +579,18 @@ export function OpsProvider({ children }: { children: ReactNode }) {
             : o,
         ),
         kitchenTickets: s.kitchenTickets.map((t) => {
-          const order = s.orders.find((o) => o.id === orderId);
-          if (
-            !order ||
-            t.placedAt !== order.placedAt ||
-            t.guest !== order.guest
-          )
-            return t;
+          const linked =
+            t.orderId === orderId ||
+            (!t.orderId &&
+              (() => {
+                const order = s.orders.find((o) => o.id === orderId);
+                return (
+                  !!order &&
+                  t.placedAt === order.placedAt &&
+                  t.guest === order.guest
+                );
+              })());
+          if (!linked) return t;
           return { ...t, status: "bumped" as const, notes: `VOID: ${reason}` };
         }),
       })),
@@ -788,7 +824,7 @@ export function OpsProvider({ children }: { children: ReactNode }) {
   const value: OpsContextValue = {
     state,
     ready,
-    login,
+    enterAs,
     logout,
     setRole,
     setWaiterName,

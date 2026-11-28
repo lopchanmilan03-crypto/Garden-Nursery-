@@ -27,17 +27,16 @@ export type AuthRole = "owner" | "staff" | "kitchen";
 
 export type AuthSession = {
   role: AuthRole;
-  username: string;
   staffId: string;
   displayName: string;
 };
 
-export type DemoLogin = {
-  username: string;
-  password: string;
+/** Demo role profiles — entry by role tap, not passwords. */
+export type RoleProfile = {
   role: AuthRole;
   staffId: string;
   displayName: string;
+  hint: string;
 };
 
 export type AttendanceStatus = "on-time" | "late" | "absent" | "working";
@@ -87,6 +86,8 @@ export type KitchenTicketLine = {
 
 export type KitchenTicket = {
   id: string;
+  /** Linked DemoOrder id — preferred sync key */
+  orderId?: string;
   table: string | null;
   type: "dine-in" | "takeaway";
   guest: string;
@@ -391,30 +392,33 @@ export const seedMenuItems: MenuItem[] = [
   },
 ];
 
-/** Demo credentials — no real backend. */
-export const demoLogins: DemoLogin[] = [
+/** Demo role entry — pick a role; no passwords shipped. */
+export const roleProfiles: RoleProfile[] = [
   {
-    username: "owner",
-    password: "owner",
     role: "owner",
     staffId: "st-owner",
     displayName: "Anupam Bajracharya",
+    hint: "Dash, bills, stock, reports",
   },
   {
-    username: "staff",
-    password: "staff",
     role: "staff",
     staffId: "st-sita",
     displayName: "Sita Gurung",
+    hint: "Orders, shift, open bills",
   },
   {
-    username: "kitchen",
-    password: "kitchen",
     role: "kitchen",
     staffId: "st-chef",
     displayName: "Bikash Lama",
+    hint: "Live board & stock alerts",
   },
 ];
+
+export const SESSION_COOKIE = "garden-ops-role";
+
+export function isAuthRole(value: string): value is AuthRole {
+  return value === "owner" || value === "staff" || value === "kitchen";
+}
 
 export const OPS_TODAY = "2026-11-28";
 
@@ -514,6 +518,7 @@ export const demoOrders = seedOrders;
 export const seedKitchenTickets: KitchenTicket[] = [
   {
     id: "kt-2200",
+    orderId: "ord-1042",
     table: "T2",
     type: "dine-in",
     guest: "Anisha R.",
@@ -528,6 +533,7 @@ export const seedKitchenTickets: KitchenTicket[] = [
   },
   {
     id: "kt-2199",
+    orderId: "ord-1041",
     table: "T3",
     type: "dine-in",
     guest: "Pratik S.",
@@ -920,22 +926,35 @@ export function authRoleToOpsRole(role: AuthRole): Role {
   return "owner";
 }
 
-export function tryLogin(
-  username: string,
-  password: string,
-): AuthSession | null {
-  const hit = demoLogins.find(
-    (d) =>
-      d.username.toLowerCase() === username.trim().toLowerCase() &&
-      d.password === password,
-  );
+export function sessionForRole(role: AuthRole): AuthSession | null {
+  const hit = roleProfiles.find((d) => d.role === role);
   if (!hit) return null;
   return {
     role: hit.role,
-    username: hit.username,
     staffId: hit.staffId,
     displayName: hit.displayName,
   };
+}
+
+export function canAccessPath(role: AuthRole, pathname: string): boolean {
+  if (role === "owner") return true;
+  if (pathname.startsWith("/admin") || pathname.startsWith("/dashboard")) {
+    return false;
+  }
+  if (
+    pathname.startsWith("/employee") ||
+    pathname.startsWith("/order") ||
+    pathname.startsWith("/staff") ||
+    pathname.startsWith("/menu") ||
+    pathname.startsWith("/demo") ||
+    pathname.startsWith("/table")
+  ) {
+    return role === "staff";
+  }
+  if (pathname.startsWith("/kitchen")) {
+    return role === "kitchen";
+  }
+  return true;
 }
 
 export function minutesBetween(a: string, b: string): number {

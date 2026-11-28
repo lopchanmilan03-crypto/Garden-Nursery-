@@ -143,8 +143,23 @@ function EmployeeInner() {
       source: "waiter",
       waiter: state.session?.displayName,
     });
+    const draft = {
+      id,
+      table: tableCode,
+      guest: tableCode ? `Table · ${tableCode}` : "Walk-in",
+      items: lines.map((l) => `${l.item.name} ×${l.qty}`),
+      lines: lines.map((l) => ({
+        menuItemId: l.item.id,
+        name: l.item.name,
+        qty: l.qty,
+      })),
+      total: subtotal,
+      status: "new" as const,
+      placedAt: "",
+      type: "dine-in" as const,
+    };
     setOrderId(id);
-    setOrderTotal(subtotal);
+    setOrderTotal(payableTotal(draft));
     setCart({});
     setStep("done");
     setPaid(false);

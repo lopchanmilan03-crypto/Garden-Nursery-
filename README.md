@@ -2,15 +2,17 @@
 
 Staff-only phone app for **Garden Restaurant** (Lazimpat, Kathmandu).
 
-## Roles
+## Enter
 
-| Login | Password | Home |
-| --- | --- | --- |
-| `owner` | `owner` | Admin dashboard, payables, expenses, bills, reports, stock, attendance |
-| `staff` | `staff` | Take orders → kitchen, stock, shift, open bills |
-| `kitchen` | `kitchen` | Live board + stock alerts |
+Tap a role on `/` (Owner · Staff · Kitchen). No passwords — the server sets an httpOnly role cookie; `proxy` gates protected routes.
 
-Owner can open Floor and Kitchen too. Demo data in **NPR**, timezone **Asia/Kathmandu**, synced via `localStorage` (`garden-restaurant-ops-v4`).
+| Role | Home |
+| --- | --- |
+| Owner | `/admin` — dash, bills, payables, expenses, reports, stock, attendance |
+| Staff | `/employee` — order → kitchen, stock, shift, bills |
+| Kitchen | `/kitchen` — live board + stock alerts |
+
+Owner can open Floor and Kitchen. Demo data in **NPR**, timezone **Asia/Kathmandu**, client state in `localStorage` (`garden-restaurant-ops-v5`).
 
 ## Scripts
 

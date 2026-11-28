@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { PhoneShell } from "@/components/phone-nav";
-import { demoLogins, restaurant } from "@/lib/demo-data";
+import { restaurant, roleProfiles, type AuthRole } from "@/lib/demo-data";
 import { useOps } from "@/lib/ops-store";
 import { cn } from "@/lib/utils";
 
@@ -14,38 +14,38 @@ const roleHome = {
 } as const;
 
 export default function LoginPage() {
-  const { login, state, ready } = useOps();
+  const { enterAs, logout, state, ready } = useOps();
   const router = useRouter();
-  const [username, setUsername] = useState("owner");
-  const [password, setPassword] = useState("owner");
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [picked, setPicked] = useState<"owner" | "staff" | "kitchen">("owner");
+  const restored = useRef(false);
 
   useEffect(() => {
-    if (!ready) return;
-    if (state.session) {
-      router.replace(roleHome[state.session.role]);
-    }
-  }, [ready, state.session, router]);
+    if (!ready || !state.session || restored.current) return;
+    restored.current = true;
+    let cancelled = false;
+    (async () => {
+      const role = state.session!.role;
+      const ok = await enterAs(role);
+      if (cancelled) return;
+      if (ok) router.replace(roleHome[role]);
+      else await logout();
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [ready, state.session, enterAs, logout, router]);
 
-  function pickRole(role: "owner" | "staff" | "kitchen") {
-    setPicked(role);
-    setUsername(role);
-    setPassword(role);
+  async function pickRole(role: AuthRole) {
+    setBusy(true);
     setError("");
-  }
-
-  function submit(e: React.FormEvent) {
-    e.preventDefault();
-    const ok = login(username, password);
+    const ok = await enterAs(role);
+    setBusy(false);
     if (!ok) {
-      setError("Wrong login — try owner / staff / kitchen");
+      setError("Could not start session — try again");
       return;
     }
-    const sessionRole =
-      demoLogins.find((d) => d.username === username.trim().toLowerCase())
-        ?.role ?? picked;
-    router.replace(roleHome[sessionRole]);
+    router.replace(roleHome[role]);
   }
 
   if (!ready) {
@@ -69,77 +69,56 @@ export default function LoginPage() {
             {restaurant.name}
           </h1>
           <p className="mt-3 max-w-[18rem] text-sm leading-relaxed text-[var(--garden-ink)]/65">
-            Cafe ops — login to your role.
+            Cafe ops — tap your role to enter.
           </p>
         </header>
 
-        <div className="animate-rise-delay-1 mt-8 grid grid-cols-3 gap-2">
-          {(
-            [
-              { id: "owner", label: "Owner", tone: "gold" },
-              { id: "staff", label: "Staff", tone: "deep" },
-              { id: "kitchen", label: "Kitchen", tone: "leaf" },
-            ] as const
-          ).map((r) => (
-            <button
-              key={r.id}
-              type="button"
-              onClick={() => pickRole(r.id)}
-              className={cn(
-                "flex min-h-[4.25rem] flex-col items-center justify-center rounded-2xl text-sm font-semibold active:scale-[0.98]",
-                picked === r.id
-                  ? r.tone === "gold"
-                    ? "bg-[var(--garden-gold)] text-[var(--garden-deep)] ring-2 ring-[var(--garden-deep)]/20"
-                    : r.tone === "deep"
-                      ? "bg-[var(--garden-deep)] text-white ring-2 ring-[var(--garden-gold)]/50"
-                      : "bg-[var(--garden-leaf)] text-white ring-2 ring-[var(--garden-gold)]/40"
-                  : "bg-white/80 text-[var(--garden-deep)] ring-1 ring-[var(--garden-leaf)]/12",
-              )}
-            >
-              {r.label}
-            </button>
-          ))}
+        <div className="animate-rise-delay-1 mt-auto flex flex-col gap-3 pb-4">
+          {roleProfiles.map((r) => {
+            const tone =
+              r.role === "owner"
+                ? "gold"
+                : r.role === "staff"
+                  ? "deep"
+                  : "leaf";
+            return (
+              <button
+                key={r.role}
+                type="button"
+                disabled={busy}
+                onClick={() => pickRole(r.role)}
+                className={cn(
+                  "flex min-h-[5rem] flex-col justify-center rounded-2xl px-5 text-left active:scale-[0.99] disabled:opacity-60",
+                  tone === "gold"
+                    ? "bg-[var(--garden-gold)] text-[var(--garden-deep)]"
+                    : tone === "deep"
+                      ? "bg-[var(--garden-deep)] text-white"
+                      : "bg-[var(--garden-leaf)] text-white",
+                )}
+              >
+                <span className="text-xl font-semibold">
+                  {r.role === "owner"
+                    ? "Owner"
+                    : r.role === "staff"
+                      ? "Staff"
+                      : "Kitchen"}
+                </span>
+                <span
+                  className={
+                    tone === "gold"
+                      ? "mt-1 text-sm opacity-70"
+                      : "mt-1 text-sm text-white/75"
+                  }
+                >
+                  {r.displayName} · {r.hint}
+                </span>
+              </button>
+            );
+          })}
+          {error ? <p className="text-sm text-red-700">{error}</p> : null}
         </div>
 
-        <form
-          onSubmit={submit}
-          className="animate-rise-delay-2 mt-6 space-y-3 rounded-3xl bg-white/90 p-4 ring-1 ring-[var(--garden-leaf)]/10"
-        >
-          <label className="block text-xs font-medium text-[var(--garden-leaf)]">
-            Username
-            <input
-              className="mt-1 h-12 w-full rounded-xl border border-[var(--garden-leaf)]/15 bg-[var(--garden-sand)] px-3 text-base text-[var(--garden-deep)]"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              autoComplete="username"
-            />
-          </label>
-          <label className="block text-xs font-medium text-[var(--garden-leaf)]">
-            Password
-            <input
-              type="password"
-              className="mt-1 h-12 w-full rounded-xl border border-[var(--garden-leaf)]/15 bg-[var(--garden-sand)] px-3 text-base text-[var(--garden-deep)]"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              autoComplete="current-password"
-            />
-          </label>
-          {error ? (
-            <p className="text-sm text-red-700">{error}</p>
-          ) : (
-            <p className="text-xs text-[var(--garden-ink)]/50">
-              Demo: owner/owner · staff/staff · kitchen/kitchen
-            </p>
-          )}
-          <button
-            type="submit"
-            className="flex min-h-14 w-full items-center justify-center rounded-2xl bg-[var(--garden-deep)] text-base font-semibold text-white active:scale-[0.99]"
-          >
-            Enter
-          </button>
-        </form>
-
-        <p className="mt-auto pt-8 text-center text-[11px] text-[var(--garden-ink)]/40">
+        <p className="pt-4 text-center text-[11px] text-[var(--garden-ink)]/40">
           Asia/Kathmandu · NPR · local demo
         </p>
       </div>
