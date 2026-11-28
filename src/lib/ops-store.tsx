@@ -208,33 +208,43 @@ export function OpsProvider({ children }: { children: ReactNode }) {
     setState(fn);
   }, []);
 
-  const enterAs = useCallback(
-    async (role: AuthRole) => {
-      const session = sessionForRole(role);
-      if (!session) return false;
+  const enterAs = useCallback(async (role: AuthRole) => {
+    const session = sessionForRole(role);
+    if (!session) return false;
+
+    // Apply client session first so AuthGate / localStorage hydrate work
+    // even if the cookie request is slow or the host rejects Secure cookies.
+    const next = (prev: OpsState): OpsState => ({
+      ...prev,
+      session,
+      role: authRoleToOpsRole(session.role),
+      waiterName:
+        session.role === "staff" || session.role === "owner"
+          ? session.displayName
+          : prev.waiterName,
+    });
+    setState((prev) => {
+      const merged = next(prev);
       try {
-        const res = await fetch("/api/session", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ role }),
-        });
-        if (!res.ok) return false;
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
       } catch {
-        return false;
+        /* ignore */
       }
-      patch((s) => ({
-        ...s,
-        session,
-        role: authRoleToOpsRole(session.role),
-        waiterName:
-          session.role === "staff" || session.role === "owner"
-            ? session.displayName
-            : s.waiterName,
-      }));
-      return true;
-    },
-    [patch],
-  );
+      return merged;
+    });
+
+    try {
+      await fetch("/api/session", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({ role }),
+      });
+    } catch {
+      /* cookie is best-effort; client session still set */
+    }
+    return true;
+  }, []);
 
   const logout = useCallback(async () => {
     try {

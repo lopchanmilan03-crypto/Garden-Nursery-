@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import { PhoneShell } from "@/components/phone-nav";
 import { restaurant, roleProfiles, type AuthRole } from "@/lib/demo-data";
 import { useOps } from "@/lib/ops-store";
@@ -14,38 +13,42 @@ const roleHome = {
 } as const;
 
 export default function LoginPage() {
-  const { enterAs, logout, state, ready } = useOps();
-  const router = useRouter();
+  const { enterAs, state, ready } = useOps();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const restored = useRef(false);
+  const navigating = useRef(false);
 
+  // Resume prior session with a full navigation so cookies + storage stay aligned.
   useEffect(() => {
-    if (!ready || !state.session || restored.current) return;
-    restored.current = true;
-    let cancelled = false;
-    (async () => {
-      const role = state.session!.role;
-      const ok = await enterAs(role);
-      if (cancelled) return;
-      if (ok) router.replace(roleHome[role]);
-      else await logout();
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [ready, state.session, enterAs, logout, router]);
+    if (!ready || !state.session || navigating.current) return;
+    navigating.current = true;
+    const href = roleHome[state.session.role];
+    void enterAs(state.session.role).finally(() => {
+      window.location.assign(href);
+    });
+  }, [ready, state.session, enterAs]);
 
   async function pickRole(role: AuthRole) {
+    if (busy || navigating.current) return;
     setBusy(true);
     setError("");
-    const ok = await enterAs(role);
-    setBusy(false);
-    if (!ok) {
+    navigating.current = true;
+    try {
+      const ok = await enterAs(role);
+      if (!ok) {
+        navigating.current = false;
+        setBusy(false);
+        setError("Could not start session — try again");
+        return;
+      }
+      // Hard navigate so the next document request includes the role cookie
+      // and localStorage already has the session (enterAs writes sync).
+      window.location.assign(roleHome[role]);
+    } catch {
+      navigating.current = false;
+      setBusy(false);
       setError("Could not start session — try again");
-      return;
     }
-    router.replace(roleHome[role]);
   }
 
   if (!ready) {

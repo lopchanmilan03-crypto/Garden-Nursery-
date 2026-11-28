@@ -5,6 +5,23 @@ import {
   type AuthRole,
 } from "@/lib/demo-data";
 
+function setRoleCookie(res: NextResponse, role: string, maxAge: number) {
+  const secure =
+    process.env.NODE_ENV === "production" &&
+    process.env.VERCEL === "1"
+      ? true
+      : false;
+  res.cookies.set(SESSION_COOKIE, role, {
+    httpOnly: true,
+    sameSite: "lax",
+    path: "/",
+    maxAge,
+    // Avoid Secure cookies on hosts that aren't clearly HTTPS production
+    // (e.g. some preview/app runtimes) — missing cookie caused role-tap bounce.
+    secure,
+  });
+}
+
 export async function POST(request: Request) {
   let body: unknown;
   try {
@@ -21,23 +38,12 @@ export async function POST(request: Request) {
   }
 
   const res = NextResponse.json({ ok: true, role: role as AuthRole });
-  res.cookies.set(SESSION_COOKIE, role, {
-    httpOnly: true,
-    sameSite: "lax",
-    path: "/",
-    maxAge: 60 * 60 * 12,
-    secure: process.env.NODE_ENV === "production",
-  });
+  setRoleCookie(res, role, 60 * 60 * 12);
   return res;
 }
 
 export async function DELETE() {
   const res = NextResponse.json({ ok: true });
-  res.cookies.set(SESSION_COOKIE, "", {
-    httpOnly: true,
-    sameSite: "lax",
-    path: "/",
-    maxAge: 0,
-  });
+  setRoleCookie(res, "", 0);
   return res;
 }
